@@ -113,7 +113,18 @@ class ModelRequestInvalid(ModelError):
 
 @dataclass(frozen=True)
 class ModelCall:
-    """One completed call, with what it cost and what produced it."""
+    """One completed call, with what it cost and what produced it.
+
+    ``reasoning_tokens`` and ``cached_input_tokens`` are reported when the
+    provider supplies them and left as ``None`` when it does not. They are never
+    estimated.
+
+    **Reasoning tokens are already part of ``output_tokens``.** The reasoning
+    guide is explicit that they are billed as output tokens, so adding them to a
+    total would count the same tokens twice. They are recorded separately
+    because knowing how much of the output was reasoning is what tells you
+    whether a lower effort setting is worth trying.
+    """
 
     parsed: BaseModel
     model: str
@@ -122,6 +133,9 @@ class ModelCall:
     total_tokens: int | None
     duration_ms: int
     response_id: str | None
+    reasoning_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    reasoning_effort: str | None = None
 
     def usage(self) -> dict[str, Any]:
         return {
@@ -129,8 +143,17 @@ class ModelCall:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "total_tokens": self.total_tokens,
+            # A subset of output_tokens, not an addition to it.
+            "reasoning_tokens": self.reasoning_tokens,
+            # A subset of input_tokens, billed at the cached rate.
+            "cached_input_tokens": self.cached_input_tokens,
+            "reasoning_effort": self.reasoning_effort,
             "duration_ms": self.duration_ms,
             "response_id": self.response_id,
+            "token_accounting": (
+                "reasoning_tokens are included in output_tokens; "
+                "cached_input_tokens are included in input_tokens"
+            ),
         }
 
 
@@ -187,6 +210,9 @@ class OpenAIClient:
         key = api_key or settings.model_api_key
         self._model = model or settings.model_name or settings.default_model_name
         self._max_output_tokens = max_output_tokens or settings.max_output_tokens
+        # Empty means omit the parameter, which is the safe setting for a model
+        # that does not accept it.
+        self._reasoning_effort = (settings.model_reasoning_effort or "").strip() or None
 
         self._client = openai.AsyncOpenAI(
             api_key=key,
@@ -211,14 +237,18 @@ class OpenAIClient:
     ) -> ModelCall:
         started = time.monotonic()
 
+        request: dict[str, Any] = {
+            "model": self._model,
+            "instructions": instructions,
+            "input": input_text,
+            "text_format": schema,
+            "max_output_tokens": self._max_output_tokens,
+        }
+        if self._reasoning_effort:
+            request["reasoning"] = {"effort": self._reasoning_effort}
+
         try:
-            response = await self._client.responses.parse(
-                model=self._model,
-                instructions=instructions,
-                input=input_text,
-                text_format=schema,
-                max_output_tokens=self._max_output_tokens,
-            )
+            response = await self._client.responses.parse(**request)
         except openai.AuthenticationError as exc:
             raise ModelAuthError(str(exc)) from exc
         except openai.RateLimitError as exc:
@@ -261,9 +291,25 @@ class OpenAIClient:
             input_tokens=getattr(usage, "input_tokens", None),
             output_tokens=getattr(usage, "output_tokens", None),
             total_tokens=getattr(usage, "total_tokens", None),
+            reasoning_tokens=self._nested(usage, "output_tokens_details", "reasoning_tokens"),
+            cached_input_tokens=self._nested(usage, "input_tokens_details", "cached_tokens"),
+            reasoning_effort=self._reasoning_effort,
             duration_ms=duration_ms,
             response_id=getattr(response, "id", None),
         )
+
+    @staticmethod
+    def _nested(usage: Any, container: str, field: str) -> int | None:
+        """Read a nested usage figure, or None when the provider did not send it.
+
+        Never substitutes a zero. A missing figure and a measured zero are
+        different facts, and only one of them is something we were told.
+        """
+        details = getattr(usage, container, None)
+        if details is None:
+            return None
+        value = getattr(details, field, None)
+        return value if isinstance(value, int) else None
 
     @staticmethod
     def _find_refusal(response: Any) -> str | None:

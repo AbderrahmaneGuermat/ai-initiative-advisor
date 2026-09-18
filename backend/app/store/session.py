@@ -66,6 +66,8 @@ class AdvisoryRecord:
     #: ``usage`` so the cost of a repair is visible rather than folded in.
     repair_usage: dict[str, Any] | None = None
     repaired: bool = False
+    #: The answers version this output was produced against.
+    answers_version: int = 0
 
 
 @dataclass
@@ -139,6 +141,11 @@ class Session:
     #: Increments once per manager-initiated turn. Used to discard stale work.
     turn: int = 0
 
+    #: Increments whenever the manager submits answers. A comparison records the
+    #: version it was made against, so the loop can tell a comparison that is
+    #: still current from one the manager has since added information to.
+    answers_version: int = 0
+
     #: Held while a turn runs, so two overlapping requests cannot both commit.
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -153,6 +160,51 @@ class Session:
             if record.action is action:
                 return record.payload
         return None
+
+    def latest_record(self, action: AdvisoryAction) -> AdvisoryRecord | None:
+        for record in reversed(self.records):
+            if record.action is action:
+                return record
+        return None
+
+    def comparison_is_current(self) -> bool:
+        """Whether the stored comparison still reflects what the manager has said.
+
+        A comparison made before the manager answered anything is out of date
+        once they have. One made after is not, and re-running it would spend a
+        request to produce the same analysis.
+        """
+        record = self.latest_record(AdvisoryAction.COMPARE)
+        if record is None:
+            return False
+        return record.answers_version >= self.answers_version
+
+    def clarification_rounds_opened(self) -> int:
+        return len(self.clarification_rounds)
+
+    def citable_answers(self) -> list[dict[str, str]]:
+        """Answers a claim is allowed to cite, with their text.
+
+        Only answered questions. A skipped or unanswered question produced no
+        information, so nothing may rest on it. Supplied to the model as an
+        explicit list, separate from the status of every question, because the
+        first live run showed the model citing skipped question identifiers when
+        it had only a mixed list to work from.
+        """
+        out: list[dict[str, str]] = []
+        for round_ in self.clarification_rounds:
+            questions = {q.id: q for q in round_.batch.questions}
+            for response in round_.responses:
+                if response.status is AnswerStatus.ANSWERED and response.answer:
+                    question = questions.get(response.question_id)
+                    out.append(
+                        {
+                            "id": response.question_id,
+                            "question": question.question if question else "",
+                            "answer": response.answer,
+                        }
+                    )
+        return out
 
     @property
     def diagnosis(self) -> Diagnosis | None:
@@ -248,6 +300,7 @@ class Session:
         usage: dict[str, Any] | None = None,
         repair_usage: dict[str, Any] | None = None,
         repaired: bool = False,
+        answers_version: int = 0,
     ) -> None:
         """Record questions the advisor asked, all initially unanswered.
 
@@ -278,10 +331,11 @@ class Session:
                 usage=usage,
                 repair_usage=repair_usage,
                 repaired=repaired,
+                answers_version=answers_version,
             )
         )
 
-    def record_answers(self, answers: dict[str, str | None], skipped: set[str]) -> None:
+    def record_answers(self, answers: dict[str, str | None], skipped: set[str]) -> None:  # noqa: C901
         """Write the manager's own replies.
 
         The only path by which an answer enters the session. Advisory output
@@ -294,6 +348,8 @@ class Session:
         unknown = sorted((set(answers) | skipped) - known)
         if unknown:
             raise SessionStateError(f"no such question in this session: {', '.join(unknown)}")
+
+        self.answers_version += 1
 
         for index, round_ in enumerate(self.clarification_rounds):
             # The manager has now had their turn on this round, whatever they

@@ -598,6 +598,111 @@ broad convenient one. A local check that passes is not a remote service that agr
 
 ---
 
+## D-029 — A limit reports what survived it
+
+**Status:** Confirmed · 2026-09-18 · corrects a defect found in the first live run
+
+When a turn stops at a limit, the message names the steps that completed and were saved, the step
+that was interrupted, and what the session still holds. The interrupted step's output is discarded.
+Nothing validated before it is touched.
+
+**Why.** The previous message said "Nothing partial was saved" regardless of what had happened. In
+the first live run that was simply false: a comparison had been committed and kept, and the manager
+was told the opposite. A recovery message that misdescribes the state is worse than no message,
+because it tells someone to redo work that already exists.
+
+---
+
+## D-030 — Continue resumes; it does not restart
+
+**Status:** Confirmed · 2026-09-18
+
+A comparison records the answers version it was made against. While it is still current, the
+advisor is not offered `compare` again. Once the manager supplies more, it becomes stale and
+re-comparing is available.
+
+**Why.** After a timeout, Continue is the recovery path, and the recovery must not repeat the
+expensive step that already succeeded. The rule is about staleness rather than existence, because
+re-comparing genuinely is the right move once the manager has said something new.
+
+---
+
+## D-031 — The turn deadline is 300 seconds of headroom, not a speed-up
+
+**Status:** Confirmed · 2026-09-18 · configurable through `MAX_TURN_SECONDS`
+
+**This changes nothing about how long anything takes.** The requests are exactly as slow as they
+were. What changed is that a turn doing comparison and recommendation now has room to finish inside
+one turn instead of being cut off partway.
+
+The first live run measured single steps between 20 and 60 seconds and a full turn exceeding 180.
+The old ceiling was not a performance target being missed; it was a ceiling set before anyone had
+measured the work.
+
+---
+
+## D-032 — A skipped question is described, never cited
+
+**Status:** Confirmed · 2026-09-18 · the prohibition from D-021 stands unchanged
+
+The rule does not move: a skipped or unanswered question produced no information and may not be
+cited as a `clarification.answer`. What changed is what the model is told.
+
+- The prompts carry two short worked examples: an answered question supporting a claim through
+  `sources`, and a skipped one appearing as text in `missing_evidence`.
+- The input now contains **two separate lists**: the answers that may be cited, with their text, and
+  the status of every question asked, marked as awareness only.
+
+**Why the split matters.** In the first live run the model received one mixed list and cited five
+skipped identifiers as sources. Two action outputs were rejected and repaired, at roughly a quarter
+of the session's tokens. The model was not being careless: tracing an unknown back to the question
+that would have answered it is a reasonable instinct. It was being asked to filter a list when it
+could simply have been given the filtered one.
+
+In the second run, with the split and the examples, **no output was rejected.**
+
+**What did not change.** No invented answers, and an unknown still never becomes a negative
+assessment of an option.
+
+---
+
+## D-033 — Diagnosis is optional, and only before the comparison
+
+**Status:** Confirmed · 2026-09-18
+
+`diagnose` is offered while no comparison exists, and not after. It is never required.
+
+**Why.** In the first live run the advisor compared, then diagnosed. A diagnosis is a reading of
+the brief meant to aim the analysis; arriving afterwards it informs nothing. Removing it from the
+permitted set once a comparison exists fixes the ordering without imposing a fixed sequence, which
+the method's central claim rules out. A brief clear enough to work with can still skip it entirely,
+and the second run shows the selector choosing it first of its own accord.
+
+Clarification is also limited to one round by default. The first run asked six questions across two
+rounds before comparing anything, which is more interrogation than a manager will sit through. The
+advisor now proceeds after one round and records the rest as open unknowns.
+
+---
+
+## D-034 — Measure reasoning and cached tokens, and do not double count
+
+**Status:** Confirmed · 2026-09-18
+
+Each call records `reasoning_tokens` and `cached_input_tokens` when the provider reports them, and
+leaves them null when it does not. Reasoning effort defaults to `low`, configurable through
+`MODEL_REASONING_EFFORT`, with an empty value omitting the parameter for a model that rejects it.
+
+**The accounting.** Reasoning tokens are already inside `output_tokens`, and cached input tokens are
+already inside `input_tokens`. Both are recorded as visible subsets, never added to a total. The
+reasoning guide is explicit that reasoning is billed as output; adding it would count the same
+tokens twice and inflate every cost estimate in this repository.
+
+**On cost figures generally.** Every cost in the worklog is an estimate computed from the usage the
+provider returned, at published rates. A request that failed or was cancelled returns no usage. It
+was still issued and may still have been billed, so a run containing one has a floor, not a total.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

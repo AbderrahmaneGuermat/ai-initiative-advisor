@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from app.config import APP_VERSION, BUILD_STAGE, settings
 from app.core.advisory import SUPPORTED_ACTIONS, AdvisoryEngine, permitted_actions
 from app.core.configuration import check_configuration
+from app.core.limits import limits_from_settings
 from app.core.model_client import ModelError, ModelNotConfigured, build_client
 from app.core.prompt_loader import PromptError, available_prompts, load_prompt
 from app.data import load_sample_brief, sample_scenario_id
@@ -218,7 +219,7 @@ def _session_view(session, turn: Any = None) -> dict[str, Any]:
 
 def _engine() -> AdvisoryEngine:
     try:
-        return AdvisoryEngine(build_client())
+        return AdvisoryEngine(build_client(), limits=limits_from_settings())
     except ModelNotConfigured as exc:
         raise HTTPException(
             status_code=503,

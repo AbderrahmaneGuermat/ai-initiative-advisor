@@ -66,7 +66,28 @@ class Settings(BaseSettings):
     #: initiatives is the largest output this application asks for.
     max_output_tokens: int = 8000
     #: Per-request timeout in seconds, passed to the SDK.
-    model_timeout_seconds: float = 90.0
+    model_timeout_seconds: float = 120.0
+
+    #: Wall-clock ceiling for one advisory turn.
+    #:
+    #: Raised from 180 to 300 after the first live run, where a turn that had
+    #: already committed a comparison was cut off before it could recommend.
+    #: This is operational headroom, not a performance improvement: the requests
+    #: take exactly as long as they did before, and the same work now has more
+    #: room to finish inside one turn.
+    max_turn_seconds: float = 300.0
+
+    #: Reasoning effort passed to the Responses API, for models that support it.
+    #:
+    #: Valid values per the reasoning guide are none, minimal, low, medium,
+    #: high, xhigh and max, and support varies by model. Set to an empty string
+    #: to omit the parameter entirely, which is the safe option if a model
+    #: rejects it.
+    #:
+    #: Defaults to "low". The first live run spent a large share of its output
+    #: tokens on reasoning for work that is mostly structured extraction and
+    #: judgement over a short brief.
+    model_reasoning_effort: str = "low"
 
     @property
     def default_model_name(self) -> str:

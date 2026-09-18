@@ -52,7 +52,28 @@ class Limits:
     #: oversized brief becoming an expensive call.
     max_input_chars: int = 60_000
     #: Wall-clock seconds for the whole turn, enforced as a deadline.
-    max_turn_seconds: float = 180.0
+    #: Configurable through MAX_TURN_SECONDS; see app.config.
+    max_turn_seconds: float = 300.0
+
+    #: Clarification rounds the advisor may open per session.
+    #:
+    #: One by default. After the manager has answered a round, the advisor
+    #: proceeds with what it has and records the rest as open unknowns, rather
+    #: than opening another round. The first live run asked six questions across
+    #: two rounds before comparing anything, which is more interrogation than a
+    #: manager will sit through.
+    max_clarification_rounds: int = 1
+
+
+def limits_from_settings() -> "Limits":
+    """Build limits from configuration.
+
+    Only the turn deadline is configurable. The rest are engineering judgements
+    that a deployment has no business loosening.
+    """
+    from app.config import settings
+
+    return Limits(max_turn_seconds=settings.max_turn_seconds)
 
 
 @dataclass

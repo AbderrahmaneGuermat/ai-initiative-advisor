@@ -52,10 +52,24 @@ and a validator. It does not mean it does anything.
 | Offline fixture replay | **Not implemented.** Deferred |
 | Export | **Not implemented** |
 
-**Live verification is pending.** Every automated test uses deterministic doubles, and no API key
-was available in the environment where this was built, so **no request has ever been made to
-OpenAI**. The integration is complete and tested against doubles; whether it behaves as expected
-against the real service has not been observed. See the smoke test steps below.
+**Live verification: done, twice.** Two full advisory sessions have run against OpenAI with
+`gpt-5-mini`, using the fictional scenario. The service accepts the schemas, and the flow completes
+end to end. Details, including what the first run got wrong, are in
+[docs/worklog.md](docs/worklog.md).
+
+| | First run | Second run, after the fixes |
+|---|---|---|
+| Provider requests | 14 | 8 |
+| Outputs rejected by validation | 2 | 0 |
+| Repair attempts | 2 | 0 |
+| Requests cancelled by the deadline | 1 | 0 |
+| Tokens counted | 84,287 | 40,478 |
+| Estimated cost | $0.086 | $0.027 |
+| Wall clock | four turns, one timing out at 180s | two turns, 108s total |
+
+**The interface itself has not been verified.** Every check so far has gone through the API. Nobody
+has opened the browser and clicked through the panels, so the rendering, the forms and the skip
+control are unconfirmed. Instructions for doing that are below.
 
 Three things worth keeping apart, because it is easy to run them together:
 
@@ -212,6 +226,24 @@ backend/.venv/bin/python -m pytest backend                # macOS, Linux
 
 Editing the brief after a session has started begins a **new** session. It does not revise the
 existing advice, and the interface says so rather than implying otherwise.
+
+### Reviewing the flow in the browser
+
+This is the part nobody has done yet. With the backend and frontend running:
+
+1. Open <http://localhost:5173>. The fictional Larkfield brief loads in the left panel.
+2. Check the header. It should say the model is configured. That means the settings look usable,
+   not that the key works; the first request proves that.
+3. Edit anything you like in the left panel, then select **Start advisory session**. Expect roughly
+   a minute: the advisor reads the brief, and typically diagnoses and compares before asking.
+4. The centre panel fills as steps complete. When questions appear, answer one, tick **Skip** on
+   another, and leave a third untouched. Then send.
+5. Confirm the three states are visible and distinct afterwards: answered, skipped, unanswered.
+6. The right panel shows the recommendation. Check that the skipped and unanswered questions appear
+   under **Still unknown**, and that nothing you declined to answer has been turned into a weakness
+   of an option.
+7. `GET /api/sessions/{id}/trace` gives the prompt versions and the real token counts, including
+   reasoning tokens where the provider reports them.
 
 ### Live smoke test
 

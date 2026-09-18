@@ -1,6 +1,6 @@
 ---
 id: action.diagnose
-version: "1.0.0"
+version: "1.1.0"
 role: Read the brief and say what is wrong with it
 inputs:
   - the manager's brief, with identifiers
@@ -10,6 +10,7 @@ constraints:
   - Every finding must say what it would change
   - Cite brief identifiers where a finding concerns a specific item
   - Do not propose solutions here
+  - Only answered questions may be cited as sources
 ---
 
 Read the brief and report what a careful colleague would notice before doing any analysis.
@@ -37,6 +38,43 @@ Say what it would change. A finding that makes no difference to which initiative
 how it should be approached, is noise. If you cannot say what turns on it, leave it out.
 
 Cite the brief identifier where a finding concerns a specific objective, constraint or initiative.
+
+# Citing the manager's answers
+
+You will be shown two separate lists. **Answers you may cite** contains every clarification answer
+that exists. **Status of every question asked** is for your awareness only.
+
+Only an answered question can be a source. A skipped or unanswered question produced no
+information, so nothing may rest on it.
+
+Answered, so it may support a claim:
+
+    stated_facts: {
+      "statement": "Clerks process about 400 customs documents a week.",
+      "sources": [{"kind": "clarification.answer", "ref_id": "Q-VOLUME"}]
+    }
+
+Skipped or unanswered, so it is pending information and carries no source:
+
+    missing_evidence: {
+      "description": "Who would own the work day to day after launch. Asked and skipped.",
+      "why_it_matters": "Every option needs an owner, and none has been named.",
+      "how_it_could_be_resolved": null
+    }
+
+Naming the question in the text is right and useful. Putting its identifier in `sources` is not,
+and the application will reject the whole output for it.
+
+An unanswered question is missing information about an option. It is **not** a fault of that
+option, and must not become a negative assessment of it.
+
+# Length
+
+Be concise. A manager reads this between meetings.
+
+Concise means short sentences and no padding. It does not mean dropping things: keep every source
+citation, every labelled assumption, and every statement of what is not known. Those are the parts
+that make the advice checkable. Cut the restatement, the hedging and the throat-clearing instead.
 
 # What not to do
 

@@ -81,15 +81,79 @@ def _questions_block(session: Session) -> list[dict[str, str]]:
     return out
 
 
+def _citable_block(session: Session) -> list[dict[str, str]]:
+    """The answers a claim may cite, with their text.
+
+    Deliberately separate from the status of every question. In the first live
+    run the model was given one mixed list and cited skipped question
+    identifiers as sources, which the validation boundary then rejected twice.
+    Giving it an explicit allowed list removes the ambiguity rather than relying
+    on it to filter correctly.
+    """
+    return session.citable_answers()
+
+
+def _findings_summary(session: Session) -> dict[str, Any]:
+    """What the advisor has already concluded, in substance rather than flags.
+
+    The selector previously received booleans saying whether a diagnosis or a
+    comparison existed. That is enough to know a step has run and not enough to
+    decide what should happen next.
+    """
+    summary: dict[str, Any] = {}
+
+    diagnosis = session.diagnosis
+    if diagnosis is not None:
+        summary["diagnosis"] = {
+            "summary": diagnosis.summary,
+            "gaps": [gap.description for gap in diagnosis.gaps],
+            "contradictions": [gap.description for gap in diagnosis.contradictions],
+            "unstated_assumptions": [gap.description for gap in diagnosis.unstated_assumptions],
+        }
+
+    comparison = session.comparison
+    if comparison is not None:
+        summary["comparison"] = {
+            "criteria_considered": list(comparison.criteria_considered),
+            "initiatives_compared": sorted(comparison.compared_ids()),
+            "still_current": session.comparison_is_current(),
+            "unknowns_per_initiative": {
+                entry.initiative_id: [m.description for m in entry.missing_evidence]
+                for entry in comparison.initiatives
+            },
+        }
+
+    recommendation = session.recommendation
+    if recommendation is not None:
+        summary["recommendation"] = {
+            "summary": recommendation.summary,
+            "stances": {
+                item.initiative_id: item.stance.value for item in recommendation.items
+            },
+            "open_unknowns": list(recommendation.open_unknowns),
+        }
+
+    context_request = session.context_request
+    if context_request is not None:
+        summary["context_request"] = {
+            "message": context_request.message,
+            "missing": [item.field for item in context_request.missing],
+        }
+
+    return summary
+
+
 def selector_input(session: Session, permitted: set[AdvisoryAction]) -> str:
     """Input for the next-action prompt."""
     state = {
         "permitted_actions": sorted(a.value for a in permitted),
-        "has_diagnosis": session.diagnosis is not None,
-        "has_comparison": session.comparison is not None,
-        "has_recommendation": session.recommendation is not None,
+        "steps_completed": sorted(
+            {record.action.value for record in session.records}
+        ),
         "questions_asked": len(session.all_questions()),
+        "questions_answered": len(session.citable_answers()),
         "questions_open": len(session.open_questions()),
+        "clarification_rounds_opened": session.clarification_rounds_opened(),
         "initiative_count": len(session.brief.initiatives),
         "objective_count": len(session.brief.objectives),
     }
@@ -97,6 +161,11 @@ def selector_input(session: Session, permitted: set[AdvisoryAction]) -> str:
     parts = [
         "# Session state",
         json.dumps(state, indent=2),
+        "",
+        "# What you have already concluded",
+        json.dumps(_findings_summary(session), indent=2, ensure_ascii=False)
+        if _findings_summary(session)
+        else "Nothing yet.",
         "",
         "# Clarification so far",
         json.dumps(_questions_block(session), indent=2, ensure_ascii=False),
@@ -120,9 +189,22 @@ def action_input(session: Session, action: AdvisoryAction) -> str:
 
     questions = _questions_block(session)
     if questions:
+        citable = _citable_block(session)
         parts += [
             "",
-            "# Clarification so far",
+            "# Answers you may cite",
+            "",
+            "These are the only clarification answers that exist. A claim resting on one cites "
+            'it as {"kind": "clarification.answer", "ref_id": "<id>"}.',
+            json.dumps(citable, indent=2, ensure_ascii=False)
+            if citable
+            else "None. The manager has answered no questions, so no claim may cite one.",
+            "",
+            "# Status of every question asked",
+            "",
+            "For your awareness only. A question below that is not in the citable list above "
+            "produced no information: name it in missing_evidence or open_unknowns as text, and "
+            "never as a source.",
             json.dumps(questions, indent=2, ensure_ascii=False),
         ]
 

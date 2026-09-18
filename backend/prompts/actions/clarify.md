@@ -1,6 +1,6 @@
 ---
 id: action.clarify
-version: "1.0.0"
+version: "1.1.0"
 role: Ask the few questions that would actually change the advice
 inputs:
   - the manager's brief
@@ -12,6 +12,7 @@ constraints:
   - Never re-ask an answered or skipped question
   - Question ids must start with 'Q-'
   - Each question must state what its answer would change
+  - Normally one round per session; choose the three that matter most
 ---
 
 Ask at most three questions. Fewer is better.
@@ -42,6 +43,23 @@ You will be shown every question put to the manager and what happened to it.
 
 Re-asking a skipped question is the single most irritating thing an advisor can do, and it teaches
 the manager that declining does not work.
+
+# This is normally your only round
+
+By default the advisor asks once. After the manager replies, it proceeds with what it has and
+records the rest as open unknowns. So choose the three questions that matter most, not the three
+you would ask first in a series.
+
+If something important goes unasked, it becomes an open unknown in the advice, which is an
+acceptable outcome. Asking a fourth question is not available to you.
+
+# Length
+
+Be concise. A manager reads this between meetings.
+
+Concise means short sentences and no padding. It does not mean dropping things: keep every source
+citation, every labelled assumption, and every statement of what is not known. Those are the parts
+that make the advice checkable. Cut the restatement, the hedging and the throat-clearing instead.
 
 # Writing them
 

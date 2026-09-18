@@ -663,3 +663,175 @@ All executed in this session on Windows 11, Python 3.14.5.
 The five findings are fixed and covered by regression tests. Committed and pushed. The project owner
 will configure a key locally and run the first live user-flow test; **live verification stays marked
 pending until that actually happens.**
+
+---
+
+## 2026-09-18 — Prompt [007](prompts/007-live-run-corrections.md), the first live runs and what they changed
+
+**Instruction:** Record the first real run, correct the timeout message and continuity, fix the
+skipped-question references, improve the advisor's sequencing, measure reasoning and cached tokens,
+and run one follow-up test. No new features.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### Part A — the first live run, recorded
+
+**This section describes real requests to OpenAI.** Everything in every previous worklog entry was
+produced with deterministic doubles: scripted objects returned by `tests/doubles.py`, no network, no
+key. The two are not comparable and are kept apart here. The doubles establish that the machinery
+behaves; only these runs establish that the service accepts what we send and that the advice is
+worth reading.
+
+**Configuration.** Provider OpenAI, model `gpt-5-mini`, Responses API with native Structured
+Outputs, SDK 3.16.1, retries disabled, `max_output_tokens` 8000, turn deadline 180s, no reasoning
+effort parameter sent. Prompts at version 1.0.0.
+
+**Scenario.** The fictional Larkfield Regional Freight brief, unedited: three initiatives, an
+objective with no rationale, a constraint with no value, an initiative with no description. One
+question answered with a volume figure, one skipped, the rest skipped in a later round.
+
+**What worked.** The service accepted every schema. No request was rejected for schema reasons,
+which resolves the open question from D-028: the conservative wire subset is acceptable to the
+service in practice, for this model. The full flow completed. Skipped questions were preserved,
+surfaced in `open_unknowns` and never answered on the manager's behalf. Stated facts cited real
+identifiers, assumptions carried none. No unsupported cost or feasibility claim appeared. The
+deadline cancellation fired in real conditions and recorded the attempt with no invented usage.
+
+**The numbers, with their denominators.**
+
+| Measure | Count | Of what |
+|---|---|---|
+| Provider requests | 14 | all calls: 6 selector, 6 action, 2 repair |
+| Action outputs returned and validated | 5 | one further action request was cancelled and returned nothing |
+| Outputs rejected by validation | 2 | **2 of 5 validated outputs, 40%.** As a share of all 14 requests, 14% |
+| Repair attempts | 2 | both succeeded on the first and only attempt |
+| Requests cancelled by the deadline | 1 | a comparison call, cut off mid-flight |
+| Turns | 4 | one of which stopped at the 180s limit |
+
+The "40%" reported informally earlier is the rejected share of validated action outputs. It is not
+a share of requests, and stating it without the denominator overstated the problem.
+
+**Tokens and cost.** 84,287 tokens counted across the 13 requests that returned usage. At published
+`gpt-5-mini` rates that is **approximately $0.086**. This is a floor rather than a total: the
+cancelled request returned no usage, and a request with no usage data is not a request that cost
+nothing. It was issued, the provider did work on it, and it may have been billed.
+
+**What the run found, all four of which are fixed below.**
+
+1. The timeout message said "Nothing partial was saved" while a validated comparison had been saved
+   and kept. The message was false about the state of the session.
+2. Both rejections had a single cause: the model cited skipped question identifiers as
+   `clarification.answer` sources, five times across two outputs. The repairs cost roughly 23,000
+   tokens, about a quarter of the session.
+3. The advisor diagnosed the brief after comparing it.
+4. Six questions across two rounds before any comparison.
+
+---
+
+### Part B — the corrections
+
+**Timeout and continuity.** The limit message now names what completed and was saved, what was
+interrupted, and what the session still holds. Only the interrupted step's output is discarded. A
+comparison records the answers version it was made against, so Continue resumes from a current
+comparison instead of paying for it twice. The turn deadline is now configurable and defaults to
+300 seconds. **This is operational headroom, not a performance improvement**: nothing got faster,
+the same work simply has room to finish in one turn. Recorded as D-029, D-030 and D-031.
+
+**Skipped questions.** The prohibition is unchanged. What changed is the input: two separate lists,
+one of answers that may be cited with their text, one of every question's status marked as
+awareness only, plus two short worked examples in the prompts. Recorded as D-032.
+
+**Sequencing.** `diagnose` is offered only while no comparison exists, and never required.
+Clarification is one round by default; afterwards the advisor proceeds and records the rest as open
+unknowns. The selector now receives the substance of what it has already concluded, the diagnosis
+findings, the comparison criteria and its recorded unknowns per initiative, rather than booleans
+saying those things exist. Recorded as D-033.
+
+**Measurement.** Reasoning and cached input tokens are recorded where the provider reports them,
+as subsets of the output and input totals respectively, never added to them. Reasoning effort
+defaults to `low`. Recorded as D-034.
+
+---
+
+### Part C — the second live run
+
+Same scenario, same shape of answers: one answered with the same volume figure, one skipped, one
+left untouched. Prompts at 1.1.0, reasoning effort `low`, turn deadline 300s.
+
+| Measure | First run | Second run |
+|---|---|---|
+| Provider requests | 14 | **8** |
+| Selector / action / repair | 6 / 6 / 2 | 4 / 4 / 0 |
+| Outputs rejected by validation | 2 | **0** |
+| Repair attempts | 2 | **0** |
+| Cancelled by the deadline | 1 | **0** |
+| Clarification rounds | 2, six questions | **1, three questions** |
+| Diagnosis position | after the comparison | **first** |
+| Input tokens | 47,257 | 30,648 |
+| Output tokens | 37,030 | 9,830 |
+| of which reasoning | not measured | 2,048 |
+| Cached input tokens | not measured | 0 |
+| Total counted | 84,287 | **40,478** |
+| Estimated cost | ~$0.086, a floor | **~$0.027** |
+| Turns / wall clock | 4 turns, one hitting 180s | **2 turns, 108s** |
+
+Every usage figure in the second run is present, so its estimate is a total rather than a floor.
+
+**What the second run confirms.** Diagnosis ran first, of the selector's own choosing. One
+clarification round. No output rejected, so the citable-answers split and the worked examples did
+what they were meant to. No timeout. The advice again cites real sources, labels assumptions,
+carries the skipped question into `open_unknowns` naming it as skipped, and makes no unsupported
+cost claim.
+
+**Two honest observations about it.**
+
+1. **The order was diagnose, compare, then ask.** Comparing before asking is permitted and not
+   obviously wrong, but the comparison was made before the manager's volume answer arrived. When
+   the answer came, the selector went straight to `recommend` rather than re-comparing, even though
+   the comparison had correctly become stale and `compare` was available. The recommendation does
+   use the answer. Whether it should have re-compared first is a judgement worth watching over more
+   runs, and it is the selector's to make.
+2. **No cached input tokens were observed.** Every call reported zero. The assembled input differs
+   per call, so there may be little for the provider to cache. Nothing is concluded from one run.
+
+---
+
+### Checks performed
+
+| Check | Result |
+|---|---|
+| `pytest backend` | **150 passed**, 0 failed (was 133) |
+| Frontend `tsc --noEmit` | Passes |
+| New: timeout keeps the comparison and the message says so | Passes |
+| New: timeout with nothing committed says that instead | Passes |
+| New: Continue does not re-offer a current comparison | Passes |
+| New: Continue reaches the recommendation with no second comparison | Passes |
+| New: new answers make the comparison stale again | Passes |
+| New: diagnose not offered once a comparison exists | Passes |
+| New: diagnosis remains optional | Passes |
+| New: one clarification round by default, configurable | Passes |
+| New: citable answers exclude skipped and unanswered | Passes |
+| New: the prompt separates citable answers from question status | Passes, asserted on the text sent |
+| New: reasoning and cached tokens recorded without double counting | Passes |
+| Second live run, end to end | Completed, 8 requests, 0 rejections |
+
+### Issues and limitations
+
+1. **The interface has still not been used.** Every check, live and otherwise, has gone through the
+   API. Nobody has opened a browser, so the rendering, the forms, the skip control and the error
+   banner are unverified. The README now has step-by-step instructions for doing it.
+2. **The timeout fix was not exercised live.** The second run did not time out, which is the point,
+   but it means the new recovery message has been seen only in tests.
+3. **Two live runs is not a sample.** The improvements are large enough to be unlikely to be noise,
+   but prompt behaviour varies and nothing here is a controlled comparison.
+4. **Reasoning effort was changed at the same time as the prompts**, so the token reduction cannot
+   be attributed to either alone. Both changes were wanted regardless.
+5. **Cost figures are estimates** from provider-reported usage at published rates, and a run
+   containing a cancelled request reports a floor, not a total.
+
+### Status at end of entry
+
+The four findings from the first live run are fixed and covered by tests, and a second live run
+confirms all four in practice. Committed and pushed. The interface remains unvalidated by use.

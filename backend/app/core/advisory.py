@@ -99,15 +99,21 @@ class TurnResult:
     error: dict[str, Any] | None = None
     budget: dict[str, Any] = field(default_factory=dict)
     attempts: list[dict[str, Any]] = field(default_factory=list)
+    #: The step that was running when the turn stopped, if any. Its output was
+    #: discarded. Everything in ``actions`` was committed and is kept.
+    interrupted: str | None = None
 
 
-def permitted_actions(session: Session) -> set[AdvisoryAction]:
+def permitted_actions(
+    session: Session, limits: Limits | None = None
+) -> set[AdvisoryAction]:
     """What the advisor may choose right now, from session state alone.
 
     Prerequisites live here rather than in a prompt, because a prompt that could
     waive its own prerequisites is not enforcing them.
     """
     brief = session.brief
+    limits = limits or Limits()
     allowed: set[AdvisoryAction] = {AdvisoryAction.AWAIT_USER}
 
     if not brief.initiatives or not brief.objectives:
@@ -116,13 +122,27 @@ def permitted_actions(session: Session) -> set[AdvisoryAction]:
             allowed.add(AdvisoryAction.DIAGNOSE)
         return allowed & SUPPORTED_ACTIONS
 
-    if session.diagnosis is None:
+    # Diagnosis stays optional, and is offered only before a comparison exists.
+    # It is a reading of the brief meant to inform the analysis; once the
+    # analysis is done, looking for gaps in the brief is looking in the wrong
+    # place. The first live run diagnosed after comparing, which is how this
+    # was noticed. Nothing forces it to happen at all.
+    if session.diagnosis is None and session.comparison is None:
         allowed.add(AdvisoryAction.DIAGNOSE)
 
     # Do not ask again while the manager has questions in front of them.
     if not session.has_pending_questions():
-        allowed.add(AdvisoryAction.ASK_CLARIFICATION)
-        allowed.add(AdvisoryAction.COMPARE)
+        # One round by default. After the manager has answered, the advisor
+        # proceeds with what it has, and the rest becomes open unknowns rather
+        # than another round of questions.
+        if session.clarification_rounds_opened() < limits.max_clarification_rounds:
+            allowed.add(AdvisoryAction.ASK_CLARIFICATION)
+
+        # Re-comparing is only useful when the manager has said something since
+        # the last comparison. Otherwise Continue would pay for the same
+        # analysis a second time.
+        if not session.comparison_is_current():
+            allowed.add(AdvisoryAction.COMPARE)
 
         if session.comparison is not None:
             allowed.add(AdvisoryAction.RECOMMEND)
@@ -184,7 +204,9 @@ class AdvisoryEngine:
                 result.error = {
                     "kind": "limit",
                     "limit": exc.limit_name,
-                    "message": self._limit_message(exc),
+                    "message": self._limit_message(exc, result, session),
+                    "completed_this_turn": list(result.actions),
+                    "interrupted": result.interrupted,
                     "recoverable": True,
                 }
             except OutputRejected as exc:
@@ -225,13 +247,49 @@ class AdvisoryEngine:
             return result
 
     @staticmethod
-    def _limit_message(exc: LimitExceeded) -> str:
-        if exc.limit_name == "max_turn_seconds":
-            return (
-                "The advisor ran out of time and was stopped. Nothing partial was saved. "
-                "You can try again."
+    def _limit_message(exc: LimitExceeded, result: "TurnResult", session: Session) -> str:
+        """Say what survived and what did not.
+
+        The previous message said "Nothing partial was saved" whatever had
+        happened. In the first live run that was false: a comparison had been
+        committed and kept, and the message told the manager the opposite. What
+        a limit discards is the interrupted step's output. Work validated before
+        it is unaffected.
+        """
+        saved = ", ".join(result.actions) if result.actions else None
+
+        heads = {
+            "max_turn_seconds": "The advisor ran out of time for this turn.",
+            "max_model_requests": "The advisor reached its request limit for this turn.",
+            "max_actions": "The advisor reached its step limit for this turn.",
+            "max_input_chars": "The information for this step was too large to send.",
+        }
+        parts = [heads.get(exc.limit_name, "The advisor reached a limit for this turn.")]
+
+        if saved:
+            parts.append(f"Completed and saved this turn: {saved}.")
+        else:
+            parts.append("No step completed this turn, so nothing new was saved.")
+
+        if result.interrupted:
+            parts.append(
+                f"Interrupted before finishing: {result.interrupted}. Its output was discarded."
             )
-        return "The advisor reached a limit for this step and stopped."
+
+        held = [
+            name
+            for name, present in (
+                ("diagnosis", session.diagnosis is not None),
+                ("comparison", session.comparison is not None),
+                ("recommendation", session.recommendation is not None),
+            )
+            if present
+        ]
+        if held:
+            parts.append(f"Still held from this session: {', '.join(held)}.")
+
+        parts.append("Select Continue to carry on from here.")
+        return " ".join(parts)
 
     async def _loop(
         self,
@@ -243,12 +301,14 @@ class AdvisoryEngine:
         while True:
             budget.require_time("the advisory loop")
 
-            permitted = permitted_actions(session)
+            permitted = permitted_actions(session, self._limits)
             if not permitted:
                 result.stopped_because = "no action is available"
                 return
 
+            result.interrupted = "choosing the next step"
             action = await self._select_action(session, turn, permitted, budget)
+            result.interrupted = None
 
             if action is AdvisoryAction.AWAIT_USER:
                 # No model call. Nothing to generate, and a request here would
@@ -259,7 +319,9 @@ class AdvisoryEngine:
                 return
 
             budget.charge_action()
+            result.interrupted = action.value
             await self._execute(session, action, turn, budget)
+            result.interrupted = None
             result.actions.append(action.value)
 
             if action in (AdvisoryAction.ASK_CLARIFICATION, AdvisoryAction.REQUEST_CONTEXT):
@@ -603,6 +665,7 @@ class AdvisoryEngine:
                 usage=usage,
                 repair_usage=repair_usage,
                 repaired=repaired,
+                answers_version=session.answers_version,
             )
             return
 
@@ -621,6 +684,7 @@ class AdvisoryEngine:
                 usage=usage,
                 repair_usage=repair_usage,
                 repaired=repaired,
+                answers_version=session.answers_version,
             )
         )
 

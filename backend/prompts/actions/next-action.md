@@ -1,6 +1,6 @@
 ---
 id: action.next
-version: "1.0.0"
+version: "1.1.0"
 role: Choose what the advisor does next
 inputs:
   - the manager's brief
@@ -12,6 +12,7 @@ outputs: WireNextAction
 constraints:
   - Choose only from the permitted actions supplied
   - Do not repeat an action whose output already exists unless something changed
+  - Diagnose only before a comparison exists, and only if it would help
   - Give one short sentence of reasoning
 ---
 
@@ -22,8 +23,10 @@ happens in a later step.
 
 # The choices
 
-**diagnose** — Nothing has been read yet. Use this first on a brief that has not been examined,
-to surface what is missing, contradictory or assumed.
+**diagnose** — Optional, and only useful before any analysis. It reads the brief and surfaces
+what is missing, contradictory or assumed, so that the comparison is better aimed. It is not
+offered once a comparison exists, because looking for gaps in a brief you have already analysed
+tells nobody anything. Skip it on a brief that is clear enough to work with.
 
 **request_context** — The brief is too thin to work with at all. No objectives, or no initiatives,
 or nothing that identifies what is being decided. This is not the same as a brief with gaps; it is
@@ -43,10 +46,23 @@ they were resolved.
 
 **await_user** — Nothing useful can be done until the manager responds.
 
+# What you are shown
+
+Alongside the permitted actions you get **what you have already concluded**: the diagnosis summary
+and its findings, the comparison criteria and the unknowns it recorded per initiative, and the
+current stances if a recommendation exists. Read it. Deciding what should happen next from a list
+of things that have happened is the whole job, and the substance is there for that reason.
+
+`still_current` on a comparison says whether the manager has told you anything since it was made.
+When it is true, comparing again would produce the same analysis at the same cost.
+
 # How to decide
 
-The order is not fixed. A clear, well-specified brief may go straight to comparison. A vague one
-may need clarification more than once. Let the state of the session decide, not a script.
+The order is not fixed. A clear, well-specified brief may go straight to comparison. Let the state
+of the session decide, not a script.
+
+Clarification is normally one round. Once the manager has answered, proceed with what you have and
+let the rest stand as open unknowns rather than waiting for more.
 
 Two things to weigh:
 
