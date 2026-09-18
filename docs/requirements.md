@@ -1,197 +1,259 @@
 # Requirements
 
-Status: **proposed, awaiting review.** Nothing in this document has been implemented yet.
+Status: **design agreed in outline, skeleton implemented, application logic not started.**
+Revised following the design review in [prompts/002-design-review-and-skeleton.md](prompts/002-design-review-and-skeleton.md).
 
 This file separates three different kinds of statement, because conflating them is the easiest
 way to fail an assessment of this type:
 
 - **A — What the assessment asks for.** Taken from the assignment as relayed by the project owner.
-- **B — What BlueCallom states about Intelligence-over-Code.** Sourced from BlueCallom's own
-  public pages, with the source noted. These are constraints on *how* we build, not our inventions.
-- **C — Our implementation choices.** Everything else. These are ours to defend, and ours to change.
+- **B — What BlueCallom states about Intelligence-over-Code.** Quoted from BlueCallom's own page,
+  with the source named. These are constraints on *how* we build, not our inventions.
+- **C — Our interpretation and implementation choices.** Everything else. These are ours to
+  defend, and ours to change.
 
 ---
 
-## A. Assessment requirements
+## A. Assessment scope
 
-| # | Requirement | Source |
+The assessment has three parts. **This application addresses parts 2 and 3 only.**
+
+| # | Part | Addressed by |
 |---|---|---|
-| A1 | Build a simple strategy-consulting application for managers, with AI assistance | Assignment |
-| A2 | Follow BlueCallom's Intelligence-over-Code (IoC) method | Assignment |
-| A3 | Explain the prompts used to develop the application | Assignment |
-| A4 | Design a sample enterprise AI interface and explain the UI/UX decisions | Assignment |
+| 1 | Describe the candidate's existing professional projects | **Not this repository.** Handled separately by the project owner |
+| 2 | Build a strategy-consulting application for managers using the IoC method | This repository |
+| 3 | Design a sample enterprise AI interface and explain the UI/UX decisions | This repository, through the same application |
 
-The project owner has decided that A1, A2 and A4 are satisfied by a single application, and A3
-by the development-prompt record in [prompts/](prompts/).
+This point is load-bearing. **This application is newly built for the assessment and is not
+evidence of prior professional work.** No document in this repository may present it as such. Its
+Git history begins on 2026-09-18 and shows exactly that.
 
-### A1 expanded — what the application must do
+### A2 expanded — what the application must do
 
-Agreed with the project owner in [prompts/001-project-brief.md](prompts/001-project-brief.md):
-the application helps a manager prioritise enterprise AI initiatives against their objectives,
-resources and constraints. It must:
+Agreed in [prompts/001-project-brief.md](prompts/001-project-brief.md) and refined in
+[prompts/002-design-review-and-skeleton.md](prompts/002-design-review-and-skeleton.md): the
+application helps a manager prioritise candidate enterprise AI initiatives against their
+objectives, resources and constraints. It must:
 
 1. Ask relevant clarification questions rather than answering a vague brief.
 2. Compare alternatives.
 3. Give a justified recommendation.
 4. Revise its advice when constraints change.
 
-These four verbs — **diagnose, clarify, compare, revise** — are the functional backbone of the
-product and, per the brief, are to be driven by prompts rather than by branching code.
-
 ---
 
 ## B. What BlueCallom states about Intelligence-over-Code
 
-Retrieved 2026-09-18 from BlueCallom's public pages. Quoted phrases are BlueCallom's wording.
+Single source, retrieved and re-verified on 2026-09-18:
+**<https://bluecallom.com/intelligence-over-code-method/>**
+
+Quoted phrases below are BlueCallom's wording from that page. Our reading of them is section C
+and is never mixed in here.
 
 ### B1. The core hierarchy
 
-IoC is described as "far more than just an AI development method. It is the very foundation of
-the Native Enterprise AI solution design." Its governing principle is **"Prompt is King"** and
-**"Code is a subordinate of the King."**
-Source: <https://bluecallom.com/intelligence-over-code-method/>
+The method's governing principle is **"Prompt is King"** and **"Code is a subordinate of the
+King."** The page describes IoC as "far more than just an AI development method. It is the very
+foundation of the Native Enterprise AI solution design."
 
-### B2. What belongs in prompts
+### B2. What the prompt is
 
-Workflow orchestration and task management, business logic and decision-making, process
-reasoning, and autonomous decision-making where desired. The prompt "communicates with the AI
-(LLM) in a natural and meaningful way"; code by contrast "remains non-intelligent and linear."
+The prompt communicates with the model "in a natural and meaningful way," and the model
+"understands the meaning of the prompt based on the model's respective level, training, state,
+and design."
 
-### B3. What belongs in code
+### B3. What code is used for
 
-Code handles "API Access, Deep Learning algorithms, numerical processing, sending specific data
-to a database" and similar technical operations triggered by prompts, but "none of these
-activities ... is ever intelligent, autonomous, or reasoned about."
+Code serves "API Access, Deep Learning algorithms, numerical processing, sending specific data to
+a database, and many more activities." Such code functions are "triggered by a prompt" rather
+than operating independently, and "none of these activities ... is ever intelligent, autonomous,
+or reasoned about."
 
 ### B4. IoC is not no-code
 
-BlueCallom is explicit that IoC "has nothing to do with 'No-Code'"; they "still have thousands of
-lines of code, but only for interacting with systems and functions that must be coded for access
-or precision." Code is used "whenever it is an advantage, except for convenience."
+Stated explicitly on the page: **"IoC has nothing to do with 'No-Code'; we do use code whenever it
+is an advantage, except for convenience."**
 
-### B5. A claimed benefit that constrains our design
+### B5. Orchestration vocabulary
 
-"With better models, you get better responses without needing to change a single line of code,
-and with updated context, a prompt can elicit deeper responses without requiring any code
-changes." This is a testable design property, and we treat it as an acceptance criterion. See C7.
+The page refers to "agent orchestration," "task orchestration," "prompt-driven interactive flow,"
+"Large Action Models (LAM)," and to solutions handling "workflows" and "Intelligent Processes."
+It does not define a fixed sequence of steps.
 
-### B6. Prompt and agent granularity
+### B6. Claimed benefits
 
-BlueCallom's AgenticBlue framework describes agents as composed of "3 to 20 prompts per agent,
-depending on the complexity of the task," with prompts sequenced inside an agent and functions
-called only when needed: "we use prompts to manage processes and call specific functions only
-when needed." Prompts are described as modular and reusable, with defined roles, inputs, outputs
-and constraints.
-Source: <https://bluecallom.com/new-agentic-ai-framework/>
+"With better models, we get better responses without needing to change a single line of code."
+The page further claims the method handles enterprise complexity without conventional software
+limitations, enables autonomous processes that "learn or adjust based on external changes,"
+improves understanding of data quality beyond format compliance, and enhances productivity
+measurement.
 
-### B7. Framework concepts we are *not* required to reproduce
+### B7. What the page does **not** state
 
-The same page describes the **Agentic Spin** (a central communication strand for parallel
-multi-agent coordination), a multi-agent protocol with "Pro- and Post-Synaptic" connectors,
-stateful long-horizon memory, and **Human Interaction Points (HIPs)**, which are designated human
-oversight checkpoints inside otherwise autonomous agents. These are properties of BlueCallom's
-own platform, GPTBlue Studio. We do not have access to that platform, so we implement the
-*method*, not the platform. Two of these concepts are cheap and genuinely useful to mirror at our
-scale, and we propose to do so: Human Interaction Points (C4) and modular prompts with declared
-contracts (C3).
+Verified explicitly during review, because it matters for section C:
 
-### B8. The boundary of what is stated
+- **No mention of testing, validation, schemas, execution limits, or control mechanisms.** The
+  page is silent on these. Everything this repository does about schema enforcement, iteration
+  caps and state integrity is therefore **our engineering judgement, not a BlueCallom
+  requirement**, and is labelled as such in C4.
+- No step-by-step development lifecycle, no prompt file format, no required model vendor, and no
+  reference architecture for an implementation outside BlueCallom's own platform.
 
-BlueCallom's public pages state a philosophy and a component vocabulary. They do **not** publish a
-step-by-step development lifecycle, a prompt file format, a required model vendor, or a reference
-architecture for a non-GPTBlue implementation. Everything at that level of detail in this
-repository is ours, belongs to section C, and is labelled as such.
+### B8. Platform features we do not reproduce
+
+BlueCallom's related material describes its AgenticBlue framework and GPTBlue Studio, including
+a central multi-agent communication strand, a connector protocol between agents, long-horizon
+memory, and human oversight checkpoints. We have no access to that platform. We implement the
+**method** as stated on the source page above, not the platform, and we do not borrow its product
+vocabulary to describe our own components.
 
 ---
 
-## C. Our implementation choices
+## C. Our interpretation and implementation choices
 
 ### C1. Product framing
 
-A single-purpose advisor, not a chatbot. The manager brings a portfolio of candidate AI
-initiatives and a set of constraints. The application returns a ranked, justified shortlist that
-survives a change of constraints. Working name **AI Initiative Advisor**. See open decision D2.
+A single-purpose advisor, not a general chatbot. The manager brings a portfolio of candidate AI
+initiatives and a set of constraints. The application returns a justified, comparative
+recommendation that survives a change of constraints.
 
-### C2. The five-stage advisory pipeline
+**Product name: AI Initiative Advisor.** Confirmed by the project owner.
 
-Our reading of A1 plus B6 gives five prompt stages, run in sequence within one advisory session.
+### C2. Advisory actions, not a fixed pipeline
 
-| Stage | Purpose | Kind |
-|---|---|---|
-| 1. Diagnose | Read the stated objectives, constraints and candidate initiatives; identify what is missing, contradictory or unstated | Prompt |
-| 2. Clarify | Ask a short set of targeted questions; accept partial or skipped answers | Prompt plus HIP |
-| 3. Compare | Evaluate each initiative against derived criteria; produce per-criterion judgements with reasoning | Prompt |
-| 4. Recommend | Produce a ranked shortlist, a justification per rank, named risks, and a near-term action sequence | Prompt |
-| 5. Revise | On a constraint change, re-evaluate and state explicitly what changed, what did not, and why | Prompt |
+Diagnosis, clarification, comparison, recommendation and revision are **advisory
+responsibilities**, each with its own prompt and its own representation in the interface. They
+are **not** a mandatory five-step sequence.
 
-Five stages sits inside BlueCallom's stated range of "3 to 20 prompts per agent" (B6). We expect
-the real count to land between eight and twelve once the system prompt, the criteria rubric and
-the output-repair prompt are included.
+The model decides which advisory action is appropriate given the current session context. A
+well-specified brief may go straight to comparison. A vague one may need clarification twice. A
+constraint change after a recommendation leads to revision. A manager who supplies two
+initiatives and no objectives gets asked about objectives, not handed a comparison.
 
-### C3. Prompt contract
+This is our reading of B5, which uses orchestration language without prescribing a sequence, and
+of B1, under which deciding *what to do next* is exactly the kind of judgement that belongs in a
+prompt. Hard-coding the order in Python would put the central process decision in the subordinate.
 
-Every prompt is a version-controlled Markdown file with YAML front matter declaring its
-identifier, version, role, inputs, outputs and constraints. This is our concrete rendering of
-B6's "defined roles, inputs, outputs, and constraints." Prompts are loaded from disk at runtime
-and are not embedded in Python source, so the claim in B5 can actually be exercised: editing a
-prompt file changes behaviour without touching code.
+### C3. What prompts own
 
-### C4. Human Interaction Points
+- Which advisory action to take next, and why.
+- Which clarification questions are decision-critical.
+- Which criteria matter for this manager's situation.
+- How to interpret a trade-off.
+- What to recommend, and how to justify it.
+- How to explain a change of advice.
 
-Two in the MVP. The first is after Diagnose, where the manager answers or skips the clarification
-questions. The second is after Recommend, where the manager changes a constraint and triggers
-Revise. Both are explicit stop-and-wait points, not background autonomy.
+### C4. What code owns, and why this is not a violation
 
-### C5. The division of labour, applied
+Code enforces the following, unconditionally. The model cannot waive any of them.
 
-Following B2 and B3.
+| Control | Enforced by code |
+|---|---|
+| **Schema** | Every model response is parsed into a declared contract. Malformed output is repaired once, then surfaced as an error. Never rendered unvalidated. |
+| **Execution limits** | Maximum advisory actions per session, maximum model calls, timeouts, maximum context size. A loop cannot run unbounded because a prompt decided to continue. |
+| **State integrity** | Session state is written only through validated transitions. History is append-only, so a revision can be compared against what preceded it. |
+| **Tool contracts** | The set of actions a prompt may select from is fixed in code. A response naming an unknown action is rejected, not improvised around. |
 
-**Prompts own:** which criteria matter for this manager, how to weight them, what to ask, how to
-interpret a trade-off, what to recommend, and how to explain a change of advice.
+**This is our interpretation, not a BlueCallom instruction.** B7 records that the source page says
+nothing about validation or limits. We consider these controls compatible with IoC because they
+are not business logic: they decide nothing about which initiative is better. They are the
+"precision" case that B4 explicitly reserves for code. Removing them to reduce the Python line
+count would be method theatre, and would make the application unsafe to demonstrate.
 
-**Code owns:** model API calls and retries, session state, schema validation of model output,
-arithmetic on scores the model has assigned, export rendering, and serving the interface.
+### C5. Comparison is qualitative and explained, not scored
 
-Concretely: the model decides that regulatory exposure is a relevant criterion and that a given
-initiative scores two out of five on it. Python multiplies and sums. Python never decides a
-ranking, and the model is never asked to be a calculator. This is a direct reading of B3, which
-places numerical processing in code.
+**No weighted numerical scoring in the MVP.** Removed at the project owner's direction.
 
-### C6. Fictional data only
+A comparison presents each initiative through five distinct, separately labelled categories:
 
-Three fictional demonstration scenarios, a mid-size insurer, a logistics operator and a hospital
-network, each with objectives, constraints and six to eight candidate initiatives. No real
-employer data, no BlueCallom platform access, no scraped customer material.
+| Category | Meaning |
+|---|---|
+| **Stated facts** | What the manager actually told us, attributable to their input |
+| **Assumptions** | What the advisor assumed in order to proceed, flagged as such |
+| **Missing evidence** | What is not known and would change the assessment if supplied |
+| **Feasibility constraints** | Budget, timeline, skills, dependencies and regulatory limits that bound the option |
+| **Trade-offs** | What is given up by choosing this option over the alternatives |
 
-### C7. Acceptance criteria we hold ourselves to
+The recommendation must be traceable to these categories. A justification that cites an assumption
+must say so.
+
+**An unknown is never converted into a zero, a low score, or a neutral midpoint.** Silence about
+data quality is not evidence of poor data quality. Unknowns propagate into the output as unknowns.
+
+If numerical scoring is proposed in a later iteration, it will require explicitly documented
+scales, explicitly documented weights, and a written statement of its limitations, including what
+it cannot represent. It will not be introduced implicitly.
+
+### C6. Clarification behaviour
+
+- **At most three questions at a time**, each one decision-critical. A question that would not
+  change the advice is not asked.
+- The manager may answer any subset, or skip.
+- **Skipped and unanswered questions remain visible** in the interface and in the exported brief,
+  as either an open unknown or an explicit assumption the advisor has made in order to proceed.
+  They are not dropped, and the advisor does not quietly proceed as though they were answered.
+
+### C7. Fictional demonstration data
+
+Fictional organisations only, each with objectives, constraints and a set of candidate
+initiatives. No employer data, no real operational data, no BlueCallom platform access, no
+customer material. Every sample scenario is labelled as sample data in the interface.
+
+### C8. Offline fixture mode
+
+The application runs without a model API key by replaying recorded fixture responses, so it can
+be reviewed by someone with no credentials.
+
+Two rules govern it:
+
+1. Fixture responses are **explicitly labelled as sample data in the interface**, never presented
+   as live model output.
+2. **A failed live model call is never silently replaced by a fixture.** A failure surfaces as a
+   failure. Offline mode is entered deliberately through configuration, not as a fallback.
+
+### C9. Acceptance criteria
 
 1. Changing a prompt file changes the advice, with no Python edit.
-2. Changing one constraint, such as budget, deadline, headcount or risk appetite, produces a
-   revision that names which initiatives moved and why.
-3. Every recommendation cites the criteria and the manager's own stated constraints.
-4. The application refuses to produce a ranking when it has too little information, and asks
-   instead. Silence is not a valid response to a vague brief.
-5. Model output that fails schema validation is repaired or surfaced, never silently rendered.
+2. Changing one constraint produces a revision that names which conclusions moved, which held,
+   and why.
+3. Every recommendation is traceable to the five categories of C5, with assumptions labelled.
+4. The application asks rather than guesses when it lacks decision-critical information, and never
+   converts an unknown into a value.
+5. Model output failing schema validation is repaired once, then surfaced. Never silently rendered.
+6. Execution limits hold even when a prompt requests further action.
 
 ---
 
-## D. Open decisions that need the project owner's input
+## D. Decisions
 
-| # | Decision | Options | Our recommendation |
-|---|---|---|---|
-| D1 | Model provider | Anthropic Claude, OpenAI, or a provider-agnostic adapter | A provider-agnostic adapter with Claude as the default. It costs one small module and removes a single point of failure at demo time. |
-| D2 | Product name | AI Initiative Advisor, or something else | The owner's call. Placeholder in use throughout. |
-| D3 | Interface language | English, Spanish, or both | English, assuming the assessment is reviewed in English. Needs confirmation. |
-| D4 | Offline demo mode | Yes or no | Yes. A recorded-fixture mode so the application demonstrates without an API key or network. Assessors may not have credentials. |
-| D5 | Session persistence | In-memory, JSON file, or SQLite | A JSON file per session. It survives a restart, adds no dependency, and keeps the diff readable in Git. |
-| D6 | Export formats | Markdown, JSON, PDF | Markdown and JSON in the MVP. PDF deferred, since it adds a native dependency for little assessment value. |
-| D7 | Test depth | Smoke only, schema and scoring unit tests, or end-to-end | Schema validation and scoring arithmetic unit tests, plus one end-to-end run against fixtures. We test the deterministic parts and do not assert on model judgement. |
-| D8 | Response streaming | Yes or no | No for the MVP. It complicates state handling for a demo nobody will wait on. |
+### D-a. Confirmed by the project owner
+
+| Decision | Setting |
+|---|---|
+| Interface and documentation language | English |
+| Working product name | AI Initiative Advisor |
+| Offline fixture mode | Yes, explicitly labelled as sample data |
+| Fixture as fallback for a failed live call | Never |
+| Deployment | Local execution only. No hosting, no Docker at this stage |
+| Frontend | React, Vite, TypeScript |
+| Backend | Python, FastAPI |
+| Numerical scoring in MVP | Removed |
+| Clarification questions per turn | Maximum of three |
+
+### D-b. Still open
+
+| # | Decision | Status |
+|---|---|---|
+| D1 | Runtime model provider | **Deliberately open** until available API access is confirmed. The model client is written behind an interface so this does not block the skeleton or the interface work. |
+| D5 | Session persistence | In-memory or JSON file per session. Recommendation: JSON file, since it survives a restart and adds no dependency. |
+| D6 | Export formats | Recommendation: Markdown and JSON in the MVP. PDF deferred. |
+| D7 | Test depth | Recommendation: unit tests for schema validation, state transitions and limit enforcement, plus one end-to-end run against fixtures. Model judgement is not asserted on. |
+| D8 | Response streaming | Recommendation: not in the MVP. |
 
 ---
 
-## E. Explicitly out of scope for the initial build
+## E. Out of scope for the initial build
 
-Hosting and deployment, Docker, authentication and multi-tenancy, a real database, PDF export,
-integration with GPTBlue Studio or any BlueCallom API, multi-agent parallelism (the Agentic Spin
-of B7), long-horizon cross-session memory, and internationalisation beyond D3.
+Hosting and deployment, Docker, authentication, multi-tenancy, a database, PDF export,
+integration with GPTBlue Studio or any BlueCallom API, multi-agent parallelism, cross-session
+memory, and languages other than English.

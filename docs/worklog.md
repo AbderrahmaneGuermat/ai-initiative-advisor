@@ -72,3 +72,64 @@ verification of any kind has taken place.
 
 Design documented. Implementation not started, as instructed. Awaiting the project owner's review
 of the plan and answers to the open decisions.
+
+---
+
+## 2026-09-18 — Prompt [002](prompts/002-design-review-and-skeleton.md), design review and skeleton
+
+**Instruction:** Correct the design documentation on six points, then implement the project
+skeleton only. Verify what can be verified and report what cannot.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+This entry is written in two parts, because the instruction asked for two separate commits.
+
+### Part A — documentation corrections
+
+1. Re-retrieved <https://bluecallom.com/intelligence-over-code-method/> and queried it
+   specifically for statements about prompts, code, no-code, orchestration, control mechanisms and
+   claimed benefits.
+2. Rewrote `docs/requirements.md`:
+   - Assessment scope restated. This repository addresses parts 2 and 3 only. Part 1 is the
+     project owner's prior professional work and is handled separately. Added an explicit
+     statement that this application is newly built and is not evidence of earlier work.
+   - Section B now cites the single working source URL throughout.
+   - Replaced the fixed five-stage pipeline with advisory actions chosen per turn.
+   - Added the code-enforced controls, labelled as our engineering judgement.
+   - Replaced weighted scoring with the five-category qualitative comparison.
+   - Added the maximum of three clarification questions and the rule that skipped answers stay
+     visible as unknowns or labelled assumptions.
+   - Recorded the confirmed choices and the decisions that remain open.
+3. Rewrote `docs/architecture.md`: bounded advisory loop with a fixed action contract, the four
+   guards, the comparison model with no numeric default path, and technology rationale restated on
+   suitability and maintainability.
+4. Rewrote `docs/decisions.md`: superseded entries kept with their replacements named, rather than
+   deleted.
+5. Rewrote `README.md`: scope, status, and a short account of the method.
+6. Saved prompt 002 verbatim and added it to the prompt index.
+
+### Checks performed, Part A
+
+- Confirmed every statement attributed to BlueCallom in requirements section B comes from the
+  single page retrieved in this session, and that the page was reachable at the time of writing.
+- **Correction to the previous entry.** The 2026-09-18 entry for prompt 001 recorded that the
+  "not no-code" statement had been corroborated only through search extracts, because
+  `bluecallom.com/prompt-over-code-method/` returned HTTP 404. On re-checking, that statement
+  appears on the working method page itself, and it is now quoted and cited from there. The
+  earlier entry is left unedited, as the worklog is append-only. The 404 page is no longer cited
+  anywhere in the documentation.
+- **Verified a negative and recorded it.** The source page makes no mention of testing,
+  validation, schemas, execution limits or control mechanisms. This is stated in requirements B7,
+  so that the controls this project adds are not mistaken for BlueCallom requirements.
+- Confirmed no document presents the application as prior professional experience.
+- Confirmed the previous claim that TypeScript or a component library conflicts with IoC has been
+  withdrawn and corrected, in architecture section 6 and decision D-006a.
+
+### Issues, Part A
+
+1. The revised design has not been validated against running advisory code, because none exists.
+   In particular the claim that a bounded adaptive loop is workable within acceptable latency is
+   untested.
+2. Five decisions remain open: model provider, session persistence, export formats, test depth and
+   streaming. Only the provider was explicitly deferred by the project owner; the other four carry
+   recommendations awaiting a decision.

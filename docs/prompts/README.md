@@ -23,6 +23,7 @@ two are never mixed.
 | # | File | Instruction |
 |---|---|---|
 | 001 | [001-project-brief.md](001-project-brief.md) | Project brief: organise the repository, document requirements, propose an implementation plan, do not implement |
+| 002 | [002-design-review-and-skeleton.md](002-design-review-and-skeleton.md) | Design review corrections: assessment scope, adaptive orchestration, qualitative comparison, confirmed choices; then implement the skeleton only |
 
 ## Attribution
 

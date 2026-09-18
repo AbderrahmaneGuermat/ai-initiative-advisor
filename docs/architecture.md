@@ -1,268 +1,306 @@
-# Proposed architecture
+# Architecture
 
-Status: **proposed, awaiting review.** No code exists yet.
+Status: **skeleton implemented. Advisory logic, runtime prompts and model calls not started.**
+Revised following the design review in [prompts/002-design-review-and-skeleton.md](prompts/002-design-review-and-skeleton.md).
 
-The organising constraint is BlueCallom's rule that the prompt carries the intelligence and code
-carries the mechanics (see [requirements.md](requirements.md), B2 and B3). The architecture below
-exists mainly to make that separation visible and auditable, rather than merely claimed.
+The organising constraint is BlueCallom's stated hierarchy, that the prompt carries the
+intelligence and code carries the mechanics. See [requirements.md](requirements.md), sections B1
+to B4. The architecture below exists to make that separation visible and auditable rather than
+merely claimed, while keeping the controls that make the application safe to run.
 
 ---
 
 ## 1. Shape of the system
 
-Three parts, one process boundary.
+Two processes, one HTTP boundary.
 
 ```
-┌─────────────────────────────┐        ┌──────────────────────────────────────┐
-│  React + Vite  (port 5173)  │  HTTP  │  FastAPI  (port 8000)                │
-│                             │ ─────► │                                      │
-│  Context panel              │  JSON  │  ┌────────────────────────────────┐  │
-│  Advisory thread            │ ◄───── │  │ Orchestrator (thin)            │  │
-│  Ranking panel              │        │  │  loads prompt, calls model,    │  │
-│                             │        │  │  validates, stores, returns    │  │
-└─────────────────────────────┘        │  └───────────┬────────────────────┘  │
-                                       │              │                       │
-                                       │   ┌──────────▼──────────┐            │
-                                       │   │ prompts/  (*.md)    │  ◄── the   │
-                                       │   │ diagnose, clarify,  │      real  │
-                                       │   │ compare, recommend, │      logic │
-                                       │   │ revise, repair      │            │
-                                       │   └──────────┬──────────┘            │
-                                       │              │                       │
-                                       │   ┌──────────▼──────────┐            │
-                                       │   │ model adapter       │ ──► LLM API│
-                                       │   └─────────────────────┘            │
-                                       │   ┌─────────────────────┐            │
-                                       │   │ scoring · schemas · │            │
-                                       │   │ session store · exp │            │
-                                       │   └─────────────────────┘            │
-                                       └──────────────────────────────────────┘
+┌─────────────────────────────┐        ┌──────────────────────────────────────────┐
+│  React + Vite  (port 5173)  │        │  FastAPI  (port 8000)                    │
+│                             │  JSON  │                                          │
+│  Context panel              │ ─────► │  ┌────────────────────────────────────┐  │
+│  Advisory thread            │ ◄───── │  │ Advisory loop (bounded)            │  │
+│  Comparison + recommendation│  proxy │  │  asks the prompt what to do next,  │  │
+│                             │  /api  │  │  enforces what is permitted        │  │
+└─────────────────────────────┘        │  └──────┬──────────────────┬──────────┘  │
+                                       │         │                  │             │
+                                       │  ┌──────▼───────┐   ┌──────▼──────────┐  │
+                                       │  │ prompts/*.md │   │ GUARDS          │  │
+                                       │  │ decide       │   │ schema          │  │
+                                       │  │  next action │   │ limits          │  │
+                                       │  │  questions   │   │ state integrity │  │
+                                       │  │  comparison  │   │ action contract │  │
+                                       │  │  advice      │   └─────────────────┘  │
+                                       │  └──────┬───────┘                        │
+                                       │  ┌──────▼───────┐  ┌──────────────────┐  │
+                                       │  │ model client │  │ session store    │  │
+                                       │  └──────┬───────┘  │ export renderer  │  │
+                                       └─────────┼──────────┴──────────────────┘  │
+                                                 ▼ provider API  (or labelled fixtures)
 ```
 
-The important property: the boxes on the right that contain business judgement are Markdown
-files, not Python modules. A reviewer can read what the application thinks by reading
-`backend/prompts/`, without reading any code.
+The property that matters: the boxes containing business judgement are Markdown files. A
+reviewer can read what the application thinks by reading `backend/prompts/`, without reading
+Python. The boxes containing enforcement are Python, and the model cannot talk its way past them.
 
 ---
 
-## 2. Proposed directory layout
+## 2. Orchestration: a bounded advisory loop
+
+**There is no fixed five-step pipeline.** Corrected at the project owner's direction.
+
+Diagnosis, clarification, comparison, recommendation and revision are advisory *responsibilities*,
+each with a prompt and a place in the interface. Which one happens next is a judgement about the
+manager's situation, and under BlueCallom's hierarchy that judgement belongs in a prompt.
+
+Each turn works like this:
+
+1. Code assembles the current session state and calls the **next-action prompt**.
+2. The prompt returns a chosen action, drawn from a fixed set, with its reasoning.
+3. Code validates that choice against the action contract. An unrecognised action is rejected.
+4. Code runs the prompt for that action, validates its output against a schema, and commits the
+   result to session state through a legal transition.
+5. The loop continues or stops. Code enforces the stop conditions.
+
+The permitted actions, fixed in code:
+
+| Action | When the prompt would choose it |
+|---|---|
+| `request_context` | Essential inputs are absent entirely |
+| `ask_clarification` | Up to three decision-critical questions would change the advice |
+| `compare` | Enough is known to set out the alternatives honestly |
+| `recommend` | A comparison exists and a justified choice can be defended |
+| `revise` | A constraint changed after advice was given |
+| `await_user` | Nothing useful can be done until the manager responds |
+
+A well-specified brief may reach `compare` immediately. A vague one may clarify twice. The order
+is an outcome, not a schedule.
+
+### Why the guards are not a violation of the method
+
+[requirements.md](requirements.md) B7 records a verified fact: the BlueCallom source page says
+nothing about validation, schemas, limits or control. So these are our engineering judgement, and
+we present them as such rather than attributing them to the method.
+
+They are compatible with the hierarchy because they decide nothing. No guard has an opinion about
+which initiative is better. They enforce that the loop terminates, that state stays consistent,
+that output matches its contract, and that only declared actions run. That is the "precision" case
+BlueCallom explicitly reserves for code when the page states that IoC "has nothing to do with
+'No-Code'."
+
+The inverse error is the real risk. Moving schema enforcement or iteration caps into prose, to
+make the Python smaller, would produce an application that cannot be trusted to stop.
+
+---
+
+## 3. Comparison model
+
+**No weighted numerical scoring in the MVP.** Removed at the project owner's direction.
+
+Each initiative in a comparison carries five separately labelled categories: stated facts,
+assumptions, missing evidence, feasibility constraints, and trade-offs. Definitions are in
+[requirements.md](requirements.md), C5.
+
+Two consequences for the code:
+
+- The schema has a distinct field per category, so provenance cannot blur in transit. An
+  assumption cannot arrive labelled as a fact because it was convenient.
+- **There is no numeric default anywhere.** A missing value stays missing. The schema has no
+  "unknown becomes zero" path, because a zero would be indistinguishable from a measured low, and
+  the ranking would silently punish the option we know least about.
+
+If scoring is introduced later it arrives with documented scales, documented weights and a written
+statement of limitations. It will not appear implicitly.
+
+---
+
+## 4. Directory layout
+
+Implemented parts are marked. Everything else is planned.
 
 ```
 .
-├── README.md
-├── .env.example
-├── package.json                 # root: one dev command
-├── docs/
-│   ├── requirements.md
-│   ├── architecture.md
-│   ├── decisions.md
-│   ├── worklog.md
-│   ├── ui-ux.md                 # written alongside the interface
-│   └── prompts/                 # DEVELOPMENT prompt record (not runtime)
-│       └── 001-project-brief.md
+├── README.md                          ✅
+├── .env.example                       ✅  placeholders only
+├── .gitignore                         ✅
+├── package.json                       ✅  root: npm run dev
+├── docs/                              ✅
+│   ├── requirements.md · architecture.md · decisions.md · worklog.md
+│   ├── ui-ux.md                       ⬜  written alongside the interface
+│   └── prompts/                       ✅  DEVELOPMENT prompt record, not runtime
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI app, CORS, router mount
-│   │   ├── api/routes.py        # HTTP surface
+│   │   ├── main.py                    ✅  FastAPI app, CORS, router mount
+│   │   ├── config.py                  ✅  env loading, no secrets in code
+│   │   ├── api/routes.py              ✅  health only so far
 │   │   ├── core/
-│   │   │   ├── orchestrator.py  # stage sequencing; deliberately thin
-│   │   │   ├── prompt_loader.py # reads prompts/, parses front matter
-│   │   │   ├── model_client.py  # provider adapter + retries
-│   │   │   ├── validation.py    # Pydantic parse + repair loop
-│   │   │   └── scoring.py       # weighted arithmetic only
-│   │   ├── models/schemas.py    # Pydantic contracts
-│   │   ├── store/session.py     # session state, JSON persistence
-│   │   ├── export/render.py     # Markdown / JSON brief
-│   │   └── data/scenarios/      # fictional demo scenarios
-│   ├── prompts/                 # RUNTIME prompts — the product's intelligence
-│   │   ├── system/advisor.md
-│   │   ├── stages/01-diagnose.md
-│   │   ├── stages/02-clarify.md
-│   │   ├── stages/03-compare.md
-│   │   ├── stages/04-recommend.md
-│   │   ├── stages/05-revise.md
-│   │   └── support/repair-output.md
-│   ├── tests/
-│   ├── fixtures/                # recorded model responses for offline mode
-│   └── requirements.txt
+│   │   │   ├── advisory_loop.py       ⬜  chooses nothing; runs what the prompt chose
+│   │   │   ├── prompt_loader.py       ⬜  reads prompts/, parses front matter
+│   │   │   ├── model_client.py        ⬜  provider interface + fixture mode
+│   │   │   ├── guards.py              ⬜  limits, action contract, transitions
+│   │   │   └── validation.py          ⬜  schema parse + single repair pass
+│   │   ├── models/schemas.py          ⬜  declared contracts
+│   │   ├── store/session.py           ⬜  append-only session history
+│   │   ├── export/render.py           ⬜  Markdown / JSON brief
+│   │   └── data/scenarios/            ⬜  fictional sample scenarios
+│   ├── prompts/                       ⬜  RUNTIME prompts: the product's intelligence
+│   ├── fixtures/                      ⬜  recorded responses, labelled as sample data
+│   ├── tests/                         ⬜
+│   └── requirements.txt               ✅
 └── frontend/
-    ├── index.html
-    ├── package.json
+    ├── index.html · package.json · vite.config.ts · tsconfig.json   ✅
     └── src/
-        ├── App.tsx
-        ├── api/client.ts
-        ├── state/session.ts
-        ├── components/          # ContextPanel, AdvisoryThread, RankingPanel, ...
-        └── styles/
+        ├── main.tsx · App.tsx         ✅
+        ├── api/client.ts              ✅  health check only
+        ├── components/                ✅  layout shell, non-functional
+        └── styles/                    ✅  design tokens
 ```
 
-`docs/prompts/` and `backend/prompts/` are kept apart on purpose, as the brief requires. The
-first is the record of how the software was built. The second is the software.
+`docs/prompts/` and `backend/prompts/` are kept apart deliberately. The first records how the
+software was built. The second is the software.
 
 ---
 
-## 3. Responsibilities, stated precisely
+## 5. Responsibilities
 
-### 3.1 Runtime prompts — `backend/prompts/`
+### 5.1 Runtime prompts — `backend/prompts/` (not yet written)
 
-These own every judgement the product makes.
-
-| File | Owns |
+| Prompt | Owns |
 |---|---|
-| `system/advisor.md` | Persona, tone, refusal behaviour, the standing rule that unsupported claims are not made |
-| `stages/01-diagnose.md` | Reading the brief; naming gaps, contradictions and unstated assumptions |
-| `stages/02-clarify.md` | Choosing which three to six questions actually change the answer |
-| `stages/03-compare.md` | Deriving the criteria for this manager; scoring each initiative with reasoning |
-| `stages/04-recommend.md` | Ranking, justification, risks, sequencing |
-| `stages/05-revise.md` | Re-evaluating after a constraint change and explaining the delta |
-| `support/repair-output.md` | Restating a malformed response so it satisfies the schema |
+| `system/advisor.md` | Persona, tone, refusal behaviour, the standing rule that an unknown is never presented as a finding |
+| `actions/next-action.md` | Choosing the next advisory action from the permitted set, with reasoning |
+| `actions/diagnose.md` | Naming gaps, contradictions and unstated assumptions in the brief |
+| `actions/clarify.md` | Choosing at most three questions that would actually change the advice |
+| `actions/compare.md` | Deriving relevant criteria; producing the five-category comparison |
+| `actions/recommend.md` | A justified choice, traceable to facts and labelled assumptions, with risks and first moves |
+| `actions/revise.md` | Re-evaluating after a change and explaining what moved, what held, and why |
+| `support/repair-output.md` | Restating a malformed response so it satisfies its schema |
 
-Each file carries front matter declaring identifier, version, role, inputs, outputs and
-constraints, per requirement C3.
+Each carries front matter declaring identifier, version, role, inputs, outputs and constraints.
+Prompts are loaded from disk at runtime, never embedded in Python string literals, so the
+method's claim that better models give better results without code changes can actually be
+exercised.
 
-### 3.2 Code — `backend/app/`
+### 5.2 Code — `backend/app/`
 
-Code does five things and no more.
+**Model communication.** One interface with concrete adapters. Handles authentication, timeouts,
+retries, and the fixture mode. It contains no business rules. A live call that fails raises; it
+never falls back to a fixture.
 
-**Model communication.** `model_client.py` holds one interface with a `complete(prompt, context)`
-method, plus concrete adapters. It handles authentication, timeouts, retries with backoff, token
-accounting and the offline fixture mode. It contains no business rules.
+**Guards.** Execution limits, the permitted action contract, and legal state transitions. Pure,
+testable, no model access.
 
-**State management.** `store/session.py` holds the session: scenario, objectives, constraints,
-candidate initiatives, clarification answers, stage outputs, and a revision history. Persisted as
-one JSON file per session, so a revision diff is inspectable.
+**Validation.** Model output is parsed into declared contracts. One repair pass, then surfaced as
+an error.
 
-**Validation.** `validation.py` parses model output into Pydantic models. On failure it runs one
-repair pass through `support/repair-output.md`, then surfaces the error rather than rendering
-something unverified. This satisfies acceptance criterion C7.5.
+**State management.** Session state is append-only, so a revision can be diffed against what
+preceded it. That diff is what lets the interface show what changed.
 
-**Calculation.** `scoring.py` takes criterion weights and per-initiative scores that the model
-produced, and computes weighted totals, ranks and the delta between two revisions. Pure
-functions, fully unit tested, no model access. This is the clearest example of BlueCallom's B3
-boundary: the model judges, Python counts.
+**Exports.** A completed session rendered as a Markdown decision brief and a JSON payload,
+including open unknowns and labelled assumptions.
 
-**Exports.** `export/render.py` turns a completed session into a Markdown decision brief and a
-JSON payload.
+### 5.3 Frontend — `frontend/src/`
 
-### 3.3 Frontend — `frontend/src/`
-
-Presentation and interaction only. It never computes a ranking and never calls a model directly.
-It holds the API key nowhere; all model traffic goes through the backend.
+Presentation and interaction only. It never decides a recommendation and never calls a model
+provider directly. No API key ever reaches the browser.
 
 ---
 
-## 4. Request flow, one advisory session
+## 6. Technology choices
 
-1. Manager picks a fictional scenario, or enters their own objectives, constraints and
-   candidate initiatives. `POST /api/sessions`.
-2. `POST /api/sessions/{id}/diagnose` — orchestrator loads `01-diagnose.md`, injects the session
-   state, calls the model, validates, stores. Returns gaps and assumptions.
-3. `POST /api/sessions/{id}/clarify` returns the questions. **HIP 1:** the UI waits. The manager
-   answers or skips. `POST /api/sessions/{id}/answers` records the replies.
-4. `POST /api/sessions/{id}/compare` — the model derives criteria and scores each initiative with
-   per-criterion reasoning. Python computes weighted totals from those scores.
-5. `POST /api/sessions/{id}/recommend` — ranked shortlist, justification, risks, first moves.
-6. **HIP 2:** the manager edits a constraint. `POST /api/sessions/{id}/revise` re-runs comparison
-   and recommendation under the new constraint, and the response includes an explicit delta:
-   what moved, what held, and why.
-7. `GET /api/sessions/{id}/export?format=md|json`.
+### React with Vite and TypeScript
 
-The orchestrator is deliberately dull. Its job is to load the right prompt file, assemble
-context, call the adapter, validate and store. Any temptation to put a business rule there is a
-signal that the rule belongs in a prompt.
+**Suitability.** The interface is several coordinated panels over one evolving session object,
+with partial updates arriving per advisory turn. That is React's core competence.
 
----
+**Maintainability.** TypeScript makes the API contract explicit at the boundary where this
+application is most likely to break silently, which is the shape of the data coming back from the
+backend. Since every response is already a declared Pydantic contract, mirroring it in TypeScript
+costs little and catches drift at compile time rather than in a demonstration.
 
-## 5. Technology choices
+To correct an overstatement in the previous revision of this document: **TypeScript does not
+conflict with Intelligence-over-Code, and neither does a component library.** The method's
+hierarchy concerns where *business judgement* lives, not which typing discipline or UI toolkit the
+presentation layer uses. Types and components carry no opinion about which initiative a manager
+should fund.
 
-### Frontend: React with Vite and TypeScript — accepted as proposed
+**On component libraries.** We are starting with plain CSS modules and a small design-token file,
+because assessment part 3 asks us to explain the UI/UX decisions and a hand-built layout makes
+those decisions ours to explain. This is a presentation choice about the deliverable, not a
+methodological objection. If the interface work later needs accessible primitives such as dialogs,
+comboboxes or focus management, adopting a headless library would be an improvement rather than a
+compromise.
 
-React is the right call here and I am not proposing an alternative. Three panels with shared
-session state is exactly its comfort zone, it is the most reviewable choice for an assessor, and
-Vite gives a fast dev server with no build configuration. TypeScript is a small addition that
-pays for itself because the API contract is the thing most likely to drift.
+**Vite** for a dev server that needs no build configuration, and for the proxy that removes CORS
+handling from the developer's concerns.
 
-State via React Context plus `useReducer`. The session is one object with a small number of
-transitions. Redux or Zustand would be ceremony at this size.
+### Python with FastAPI
 
-Styling via plain CSS modules with a small design-token file. A component library would make the
-UI/UX rationale in requirement A4 harder to defend, since the decisions would be the library's
-rather than ours.
+**Suitability.** Pydantic. Validating model output against a declared contract is the single most
+important piece of code in an application of this kind, and FastAPI makes that the default path
+rather than an add-on. The Python SDK ecosystem for model providers is the most mature.
 
-### Backend: Python with FastAPI — accepted as proposed
+**Maintainability.** Generated OpenAPI documentation keeps the HTTP surface described without a
+separate document that drifts. Guards and validation are pure Python functions, fully unit
+testable without a model.
 
-Also the right call. Pydantic is the decisive factor: validating model output against a declared
-schema is the single most important piece of code in an IoC application, and FastAPI gives that
-plus generated OpenAPI documentation for free. The Python AI SDK ecosystem is the most mature.
+### Rejected alternative
 
-### One alternative I want to flag, and reject
-
-A single Next.js application with API routes would remove a process and a port. I recommend
-against it for this project. It would put the prompt-handling logic in TypeScript, where schema
-validation is weaker than Pydantic, and it would blur the boundary between interface and
-intelligence that the whole assessment is about. The two-process split is slightly more setup for
-a much clearer demonstration of the method.
+A single Next.js application with API routes would remove a process and a port. Rejected, because
+it would move prompt handling and schema validation into TypeScript, where the validation story is
+weaker than Pydantic, and it would blur the boundary between interface and intelligence that this
+assessment is about.
 
 ### Model provider
 
-A thin adapter with Claude as the default. See decision D1 in [requirements.md](requirements.md).
-The adapter is roughly fifty lines and means a missing or rate-limited key does not end the demo.
+**Deliberately open**, pending confirmation of available API access. The model client is defined
+as an interface with adapters behind it, so the choice does not block the skeleton, the guards or
+the interface. See [requirements.md](requirements.md), D-b.
 
 ---
 
-## 6. Local execution
+## 7. Local execution
 
-First-time setup, three commands:
-
-```
-npm install                                   # root + frontend deps
-python -m venv backend/.venv                  # then activate
-pip install -r backend/requirements.txt
-```
-
-Thereafter, one command from the repository root:
+First-time setup and the single startup command are documented in the [README](../README.md).
+After setup, from the repository root:
 
 ```
 npm run dev
 ```
 
-This uses `concurrently` to start Uvicorn with reload on port 8000 and Vite on port 5173. It
-works identically on Windows, macOS and Linux, which a Makefile would not. Frontend calls are
-proxied to the backend through Vite, so there is no CORS configuration for the developer to get
-wrong.
+This runs `concurrently`, starting Uvicorn with reload and the Vite dev server. It behaves
+identically on Windows, macOS and Linux, which a Makefile would not. Frontend requests to `/api`
+are proxied to the backend by Vite, so no CORS configuration is needed in development.
 
-Credentials live in `.env` at the repository root, which is git-ignored. `.env.example` will list
-every variable with a comment, and will be committed. Expected variables: the model provider
-name, the provider API key, the model identifier, and an offline-mode flag.
-
-Without a key, the application runs in offline mode against recorded fixtures, so it can be
-reviewed by someone who has no credentials.
+Credentials live in a git-ignored `.env`. `.env.example` is committed and contains placeholders
+only.
 
 ---
 
-## 7. Dependencies
+## 8. Dependencies
 
-**Backend:** `fastapi`, `uvicorn[standard]`, `pydantic`, `python-dotenv`, `pyyaml` for prompt
-front matter, the chosen provider SDK, and `pytest` plus `httpx` for tests.
+**Backend.** `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `python-dotenv`,
+`pyyaml` for prompt front matter. Later: a provider SDK, plus `pytest` and `httpx` for tests.
 
-**Frontend:** `react`, `react-dom`, `vite`, `typescript`. Nothing else planned.
+**Frontend.** `react`, `react-dom`, `vite`, `typescript`, `@vitejs/plugin-react`.
 
-**Root:** `concurrently`, as a dev dependency only.
+**Root.** `concurrently`, dev dependency only.
 
-The list is short on purpose. Every dependency in an assessment repository is something the
-assessor has to install before they can judge the work.
+Deliberately short. Every dependency in an assessment repository is something a reviewer must
+install before they can judge the work.
 
 ---
 
-## 8. Known risks in this design
+## 9. Known risks
 
-1. **Prompt output drift.** Free-form model output will not always satisfy a schema. Mitigated by
-   the repair pass, and by asking for structured output through the provider's native mechanism
-   rather than by pleading in prose.
-2. **Latency.** Five sequential model calls is slow. Compare and recommend may need to merge, or
-   the UI must show honest per-stage progress. To be measured once real calls exist, not guessed.
-3. **Cost of the demo.** A full session is five calls over a moderate context. Offline mode is
-   the answer for repeated review.
-4. **Method theatre.** The genuine risk in an IoC project is a codebase that claims prompt
-   primacy while hiding business rules in Python conditionals. Acceptance criterion C7.1 is the
-   check: if editing only a prompt file cannot change the advice, the design has failed.
+1. **Prompt output drift.** Free-form output will not always satisfy a schema. Mitigated by the
+   repair pass and by requesting structured output through the provider's native mechanism.
+2. **Loop cost and latency.** An adaptive loop can take more turns than a fixed pipeline. This is
+   why the execution limits exist. Real figures will be measured once model calls are implemented,
+   not guessed at here.
+3. **Unknowns leaking into confidence.** The failure mode we most want to avoid is advice that
+   reads as certain because an assumption lost its label in transit. Mitigated by the separate
+   schema fields of section 3, and testable.
+4. **Method theatre.** The characteristic failure of an IoC project is a codebase claiming prompt
+   primacy while business rules accumulate in Python conditionals. Acceptance criterion C9.1 is
+   the check: if editing only a prompt file cannot change the advice, the design has failed.

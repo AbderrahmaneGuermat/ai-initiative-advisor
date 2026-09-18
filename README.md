@@ -4,29 +4,65 @@ A strategy-consulting application for managers, built according to BlueCallom's
 Intelligence-over-Code method. It helps a manager prioritise a portfolio of candidate enterprise
 AI initiatives against their objectives, resources and constraints.
 
-The application diagnoses the brief, asks the clarification questions that actually change the
-answer, compares the alternatives, gives a justified recommendation, and revises that
-recommendation when a constraint changes.
+The application diagnoses the brief, asks the clarification questions that would actually change
+the answer, compares the alternatives with their evidence and assumptions labelled, gives a
+justified recommendation, and revises that recommendation when a constraint changes.
 
-Working name. Final naming is open, see decision D2 in [docs/requirements.md](docs/requirements.md).
+---
+
+## Assessment scope
+
+This repository addresses **parts 2 and 3** of the assessment:
+
+- **Part 2.** Build a strategy-consulting application for managers using the IoC method.
+- **Part 3.** Design a sample enterprise AI interface and explain the UI/UX decisions.
+
+**Part 1, the candidate's existing professional projects, is presented separately and is not this
+repository.** This application was built specifically for the assessment, beginning on
+2026-09-18. It is not evidence of earlier professional work, and nothing here should be read as
+implying otherwise. The Git history shows exactly when it was written.
 
 ---
 
 ## Current status
 
-**Design phase. No application code exists yet.**
+**Design corrected and agreed in outline. Project skeleton not yet implemented.**
 
-Completed so far:
+Completed:
 
 - Repository initialised, documentation structure created.
-- BlueCallom's published Intelligence-over-Code material reviewed and summarised, with its stated
-  requirements separated from our own implementation choices.
-- Requirements, architecture and decisions documented and awaiting review.
+- BlueCallom's published Intelligence-over-Code page reviewed and re-verified, with its stated
+  positions separated from our own interpretation.
+- Requirements, architecture and decisions documented, then revised after design review.
 
-Not started: backend, frontend, runtime prompts, demonstration data, tests, `.env.example`.
+Not started: backend application logic, runtime prompts, model integration, comparison output,
+demonstration scenarios, tests, and the UI/UX rationale document.
 
-Eight decisions are open and need the project owner's input before implementation begins. They
-are listed in [docs/requirements.md](docs/requirements.md), section D.
+---
+
+## Method, in brief
+
+BlueCallom states that **"Prompt is King"** and **"Code is a subordinate of the King,"** and that
+IoC **"has nothing to do with 'No-Code'."** Source:
+<https://bluecallom.com/intelligence-over-code-method/>
+
+Our reading, and how this project applies it:
+
+- **Prompts decide.** Which advisory action to take next, which questions matter, which criteria
+  are relevant, what to recommend, and how to explain a change of advice. These live as Markdown
+  files in `backend/prompts/`, not as string literals in Python.
+- **Code enforces.** Schema validation, execution limits, state integrity and the contract of
+  permitted actions. None of these decides anything about which initiative is better.
+- **There is no fixed pipeline.** Diagnosis, clarification, comparison, recommendation and
+  revision are advisory responsibilities, not a mandatory sequence. A well-specified brief may go
+  straight to comparison.
+- **Comparison is qualitative.** No weighted scoring in the first version. Each option is set out
+  through stated facts, assumptions, missing evidence, feasibility constraints and trade-offs, so
+  a manager can see what the advice rests on. An unknown is never converted into a zero.
+
+The BlueCallom page says nothing about validation, limits or control mechanisms. The controls in
+this project are therefore our engineering judgement, and the documentation says so rather than
+attributing them to the method.
 
 ---
 
@@ -34,61 +70,41 @@ are listed in [docs/requirements.md](docs/requirements.md), section D.
 
 | Path | Contents |
 |---|---|
-| [docs/requirements.md](docs/requirements.md) | Assessment requirements, what BlueCallom states, our choices, open decisions |
-| [docs/architecture.md](docs/architecture.md) | Proposed architecture, responsibilities, technology rationale |
-| [docs/decisions.md](docs/decisions.md) | Decision record with rationale and rejected alternatives |
+| [docs/requirements.md](docs/requirements.md) | Assessment scope, what BlueCallom states, our interpretation, open decisions |
+| [docs/architecture.md](docs/architecture.md) | Architecture, the advisory loop, responsibilities, technology rationale |
+| [docs/decisions.md](docs/decisions.md) | Decision record, including superseded decisions and why they changed |
 | [docs/worklog.md](docs/worklog.md) | What was actually done, what was checked, what is unresolved |
 | [docs/prompts/](docs/prompts/) | Chronological record of the development instructions, verbatim |
 
 Two distinct kinds of prompt live in this repository and are deliberately kept apart.
 `docs/prompts/` records the instructions used to build the software. `backend/prompts/`, once it
-exists, will contain the prompts the software itself executes at runtime. The first explains how
-this was made. The second is the product.
+exists, will contain the prompts the software executes at runtime. The first explains how this was
+made. The second is the product.
 
 ---
 
 ## Planned local execution
 
-Not yet available. This section describes the intended experience once implementation begins, so
-that the plan can be reviewed now.
+Not yet available. Described here so the plan can be reviewed.
 
 **Prerequisites:** Node.js 20 or later, Python 3.11 or later, Git.
 
-**First-time setup:**
+After a one-time setup, a single command from the repository root will start both processes:
 
-```bash
-git clone <repository-url>
-cd <repository>
-
-npm install
-
-python -m venv backend/.venv
-# Windows:        backend\.venv\Scripts\activate
-# macOS / Linux:  source backend/.venv/bin/activate
-pip install -r backend/requirements.txt
-
-cp .env.example .env    # then edit
 ```
-
-**Every time after that, one command from the repository root:**
-
-```bash
 npm run dev
 ```
 
-This starts the FastAPI backend on port 8000 and the Vite frontend on port 5173, and opens the
-interface. The frontend proxies API calls to the backend, so no CORS setup is needed.
+Credentials will live in a git-ignored `.env`. A committed `.env.example` will list every
+variable as a placeholder, with no real values.
 
-**Credentials.** The application needs one model provider API key. It goes in `.env`, which is
-git-ignored and must never be committed. `.env.example` will list every required variable with an
-explanatory comment and no real values.
+**Running without a key.** The application will support an offline mode that replays recorded
+fixture responses, so the interface and the advisory flow can be reviewed without credentials.
+Fixture output is labelled as sample data in the interface, and a failed live model call is never
+silently replaced by a fixture.
 
-**Running without a key.** The application is planned to support an offline mode that replays
-recorded model responses, so the interface and the full advisory flow can be reviewed without
-credentials, budget or network access. See decision D-008 in [docs/decisions.md](docs/decisions.md).
-
-**Demonstration data is fictional.** Three invented organisations. No employer data, no
-BlueCallom platform access, no customer material.
+**Demonstration data is fictional.** No employer data, no real operational data, no BlueCallom
+platform access.
 
 ---
 
@@ -99,7 +115,7 @@ multi-tenancy, a database, PDF export, and integration with BlueCallom's GPTBlue
 
 ---
 
-## How this repository is being produced
+## How this repository is produced
 
 This is an AI-assisted project and does not pretend otherwise.
 
@@ -111,14 +127,3 @@ This is an AI-assisted project and does not pretend otherwise.
 Every development instruction is recorded verbatim and in order in
 [docs/prompts/](docs/prompts/), and the actual outcome of each is recorded in
 [docs/worklog.md](docs/worklog.md). Nothing in that record is reconstructed after the fact.
-
----
-
-## Assessment context
-
-Built for a BlueCallom Enterprise AI Application Developer assessment, which asks for a strategy
-consulting application for managers built with the Intelligence-over-Code method, an explanation
-of the prompts used to develop it, and a sample enterprise AI interface with its UI/UX rationale.
-All three are addressed through this single project.
-
-Reference: <https://bluecallom.com/intelligence-over-code-method/>
