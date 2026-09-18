@@ -24,6 +24,7 @@ two are never mixed.
 |---|---|---|
 | 001 | [001-project-brief.md](001-project-brief.md) | Project brief: organise the repository, document requirements, propose an implementation plan, do not implement |
 | 002 | [002-design-review-and-skeleton.md](002-design-review-and-skeleton.md) | Design review corrections: assessment scope, adaptive orchestration, qualitative comparison, confirmed choices; then implement the skeleton only |
+| 003 | [003-publish-to-github.md](003-publish-to-github.md) | Publish the existing local repository to the confirmed public GitHub destination, verifying account, remotes and absence of secrets first |
 
 ## Attribution
 
