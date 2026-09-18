@@ -27,6 +27,7 @@ two are never mixed.
 | 003 | [003-publish-to-github.md](003-publish-to-github.md) | Publish the existing local repository to the confirmed public GitHub destination, verifying account, remotes and absence of secrets first |
 | 004 | [004-data-contracts-and-foundations.md](004-data-contracts-and-foundations.md) | Correct five documentation inconsistencies, implement the Pydantic data contracts, add one fictional worked example, and test the contract boundaries |
 | 005 | [005-openai-advisory-flow.md](005-openai-advisory-flow.md) | Integrate OpenAI, implement the runtime prompts, the bounded advisory loop, the validation boundary and a working interface |
+| 006 | [006-live-test-readiness.md](006-live-test-readiness.md) | Fix five findings before the first live test: configuration status, the turn deadline, trace completeness, answer locking, and the schema explanation |
 
 ## Attribution
 

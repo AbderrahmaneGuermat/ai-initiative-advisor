@@ -2,33 +2,44 @@
 
 **Why this layer exists.**
 
-Structured Outputs accepts a restricted subset of JSON Schema. It does not
-support ``minLength``, ``maxLength``, ``pattern``, ``minItems``, ``maxItems``,
-``default``, or numeric bounds, and in strict mode every property must appear in
-``required``.
+Structured Outputs accepts a subset of JSON Schema, and strict mode adds rules
+of its own: every property must appear in ``required``, and
+``additionalProperties`` must be ``false`` on every object. Our application
+contracts satisfy neither. They carry defaults throughout, which means optional
+properties, and they use pattern-constrained identifiers, minimum text lengths
+and a three-question cap.
 
-Our application contracts in this package use all of those. Identifiers are
-pattern-constrained, text fields have minimum lengths, a clarification batch is
-capped at three questions, and many fields carry defaults. Sending them to the
-API would mean either a rejected schema or silently dropped constraints.
+So the wire models here are a **deliberately conservative subset** we chose:
+plain strings, every field required, optionals expressed as ``X | None``, no
+defaults, no constraints, no numeric types at all. Nothing in them depends on a
+keyword whose support we are unsure of.
 
-So there are two layers, deliberately:
+**What we know, and how well.** The precise per-keyword support list could not
+be retrieved from the official guide when this was written: the page truncated
+before its supported-schemas section. The project owner reports that the
+documentation distinguishes additional restrictions that apply to fine-tuned
+models, which means a blanket claim that ``pattern``, string-length bounds,
+array-length bounds and numeric bounds are universally rejected would be wrong,
+and an earlier version of this docstring made exactly that claim.
 
-- **Wire models, here.** Compatible by construction. Plain strings, every field
-  required, optionals as ``X | None``, no defaults, no constraints. These are
-  what the model is asked to produce.
-- **Application contracts, everywhere else.** Strict. These are what the
-  application accepts.
+We therefore do not assert what the service accepts. We assert only what we
+chose to send, and why: a subset narrow enough that the question does not arise.
 
-Output crosses from one to the other through :mod:`app.core.validation`, where
-the real rules run. **The API cannot enforce our rules, and this layer does not
-pretend it can.** A model that returns four clarification questions produces a
-valid wire object and is then rejected by the application contract, which is the
-correct outcome and is covered by a test.
+**Three different things, kept apart.**
 
-A compatibility test asserts that every model here converts to a strict schema
-with no unsupported keyword, and that wire and application shapes have not
-drifted apart.
+1. *Our chosen subset* is what these models use. A decision, not a discovery.
+2. *Local schema checks* confirm that these models convert through the SDK's
+   strict-schema helper without emitting keywords outside that subset. This runs
+   offline and proves nothing about the service.
+3. *Actual service acceptance* is established only when OpenAI accepts a request
+   carrying one of these schemas. **That has not yet been observed.** No live
+   request has been made.
+
+Output crosses from wire to application contract in :mod:`app.core.validation`,
+where the real rules run. **The API cannot enforce our rules, and this layer
+does not pretend it can.** A model returning four clarification questions
+produces a valid wire object and is then rejected by the application contract,
+which is the correct outcome and is covered by a test.
 """
 
 from __future__ import annotations

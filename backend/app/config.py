@@ -76,14 +76,15 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
 
-    @property
-    def model_configured(self) -> bool:
-        """Whether a provider and key are both present.
-
-        Reported by the health endpoint as a boolean only. The key itself is
-        never returned by any endpoint, logged, or sent to the frontend.
-        """
-        return bool(self.model_provider and self.model_api_key)
+    # There is deliberately no `model_configured` property here.
+    #
+    # An earlier version had one that returned true for any non-empty provider
+    # and key, which meant the committed placeholder read as configured: copy
+    # .env.example, forget to edit it, and the health endpoint said the advisor
+    # was ready. The check now lives in app.core.configuration, is shared by the
+    # health endpoint and client construction, and rejects placeholders and
+    # unsupported providers. It reports local configuration presence, never
+    # authentication.
 
 
 settings = Settings()

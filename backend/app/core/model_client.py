@@ -29,6 +29,7 @@ import openai
 from pydantic import BaseModel
 
 from app.config import settings
+from app.core.configuration import check_configuration
 
 TWire = TypeVar("TWire", bound=BaseModel)
 
@@ -52,10 +53,21 @@ class ModelError(RuntimeError):
 
 
 class ModelNotConfigured(ModelError):
+    """Local configuration is missing or plainly unusable.
+
+    Raised before any request is attempted. Distinct from
+    :class:`ModelAuthError`, which means a request was made and the provider
+    rejected the credentials.
+    """
+
     user_message = (
-        "No model provider is configured. Set MODEL_PROVIDER, MODEL_NAME and MODEL_API_KEY "
-        "in a local .env file, then restart the backend."
+        "No usable model configuration was found. Set MODEL_PROVIDER, MODEL_NAME and "
+        "MODEL_API_KEY in a local .env file, then restart the backend."
     )
+
+    def __init__(self, detail: str = "", problems: list[str] | None = None) -> None:
+        super().__init__(detail)
+        self.problems = problems or ([detail] if detail else [])
 
 
 class ModelAuthError(ModelError):
@@ -149,9 +161,12 @@ class OpenAIClient:
     """Adapter over the OpenAI Responses API with Structured Outputs.
 
     The schema passed here must be a wire model from :mod:`app.models.wire`.
-    Application contracts carry constraints the Structured Outputs schema subset
-    does not accept, and sending one would be rejected by the API. The strict
-    contracts are applied afterwards, in the validation boundary.
+    Those use a deliberately conservative subset: every field required, no
+    defaults, no constraints. Application contracts are not sent, because strict
+    mode requires every property to be in ``required`` and ours carry defaults
+    throughout. The strict contracts are applied afterwards, in the validation
+    boundary, where the constraints the API was never asked to enforce are
+    enforced by us.
     """
 
     def __init__(
@@ -162,13 +177,14 @@ class OpenAIClient:
         timeout_seconds: float | None = None,
         max_output_tokens: int | None = None,
     ) -> None:
-        key = api_key or settings.model_api_key
-        if not key:
-            raise ModelNotConfigured(
-                "MODEL_API_KEY is not set. The backend starts without it, but no advisory "
-                "step can run until it is configured."
-            )
+        if api_key is None:
+            # Same check the health endpoint reports, so the two cannot disagree
+            # about whether the application is set up.
+            status = check_configuration()
+            if not status.configured_locally:
+                raise ModelNotConfigured(status.problem_summary(), problems=status.problems)
 
+        key = api_key or settings.model_api_key
         self._model = model or settings.model_name or settings.default_model_name
         self._max_output_tokens = max_output_tokens or settings.max_output_tokens
 
@@ -262,19 +278,20 @@ class OpenAIClient:
 def build_client() -> ModelClient:
     """Construct the configured client, or explain why it cannot be built.
 
+    Uses the same check as the health endpoint, so a status saying the
+    application is configured and a session that refuses to start cannot both
+    be true.
+
     Raises :class:`ModelNotConfigured` rather than returning a stub. There is no
     silent fallback: the application starts without credentials, and the failure
     appears when an advisory step is attempted, where the manager can see it.
-    """
-    provider = (settings.model_provider or "").strip().lower()
 
-    if not provider:
-        raise ModelNotConfigured(
-            "MODEL_PROVIDER is not set. Set it to 'openai' in a local .env file."
-        )
-    if provider != "openai":
-        raise ModelNotConfigured(
-            f"MODEL_PROVIDER is '{provider}', but only 'openai' is implemented."
-        )
+    Note that this establishes only that configuration is present. Whether the
+    credentials work is discovered on the first request, and shows up as
+    :class:`ModelAuthError`.
+    """
+    status = check_configuration()
+    if not status.configured_locally:
+        raise ModelNotConfigured(status.problem_summary(), problems=status.problems)
 
     return OpenAIClient()

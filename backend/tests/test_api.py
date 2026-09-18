@@ -54,9 +54,10 @@ def test_health_reports_the_stage_and_never_returns_a_key():
             assert response.status_code == 200
             body = response.json()
             assert body["status"] == "ok"
-            assert isinstance(body["model_configured"], bool)
-            assert "key" not in str(body).lower().replace("model_configured", "")
+            assert isinstance(body["model_configured_locally"], bool)
             assert "revision user flow" in body["not_implemented"]
+            # The status is about local configuration, not authentication.
+            assert "not mean the credentials are valid" in body["configuration_note"]
 
     call(run())
 

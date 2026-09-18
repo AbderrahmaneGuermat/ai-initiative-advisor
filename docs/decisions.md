@@ -478,6 +478,126 @@ answered: they have said they do not want to answer it.
 
 ---
 
+## D-024 — Configuration status means presence, never authentication
+
+**Status:** Confirmed · 2026-09-18 · corrects a defect in D-019's implementation
+
+One check, in `app/core/configuration.py`, used by both the health endpoint and client
+construction. It rejects empty values, an explicit list of placeholders including the one committed
+in `.env.example`, and providers with no adapter. It imposes **no format rule on the key itself**.
+
+**Why the placeholder matters most.** The previous check accepted any non-empty provider and key,
+so copying `.env.example` and forgetting to edit it reported the advisor as ready. That is the most
+likely setup mistake there is, and the status indicator actively concealed it.
+
+**Why no format rule.** Provider key formats change. A check that rejects a valid key is worse than
+one that lets an invalid key through to the provider, where it fails with a clear authentication
+error. The check catches only values no real key could be.
+
+**Why the naming is deliberate.** The field is `model_configured_locally`, not `connected` or
+`authenticated`, and every response carries a note saying what it does not cover. A manager who
+sees "connected" and then hits an authentication error on their first session has been misled by
+the status indicator, which is worse than having none.
+
+**One check, not two.** A health endpoint saying the application is configured and a session
+refusing to start cannot both be true, because they call the same function.
+
+---
+
+## D-025 — The turn budget is a deadline, not a check between steps
+
+**Status:** Confirmed · 2026-09-18 · corrects a defect in D-005's implementation
+
+The remaining wall-clock budget bounds each awaited call through `asyncio.wait_for`, and is
+re-checked after the call returns, before anything is committed.
+
+**The defect.** Elapsed time was tested only between loop iterations. A single slow request could
+run for minutes past a 180-second limit and still commit its output, so the limit described the
+loop rather than bounding it.
+
+**Two checks, on purpose.** The timeout cancels an overdue request rather than leaving it running.
+The re-check afterwards stops a result that arrived late from being written. Without the second, a
+call that finished just past the deadline would still land.
+
+A cancelled or late request is recorded as an attempt and nothing is committed. The session status
+returns to ready and the lock is released through `finally`, so an overrun leaves a usable session
+rather than a wedged one.
+
+---
+
+## D-026 — Attempts are recorded separately from accepted outputs
+
+**Status:** Confirmed · 2026-09-18
+
+`session.attempts` holds every provider request: selector calls, actions, repairs, rejections,
+failures and cancellations, each with its prompt hash, outcome and usage. Append-only, and written
+as each attempt completes so the successful ones survive a later failure in the same turn.
+
+**Why separate.** An accepted output says what the advisor concluded. An attempt says what was
+requested and what became of it. Keeping only the first lost every selector call, lost the cost of
+a repair, and lost every request that failed, which is exactly what someone debugging a live run
+needs to see.
+
+**Usage is never invented.** `usage_available` is explicit rather than inferred from an empty
+field. A failed or cancelled request has no usage to report, and plausible-looking token counts
+would corrupt the only record of what a run actually cost. The one nuance: a call that completed
+but arrived past the deadline does have real usage, and it is recorded with a note saying the
+result was discarded.
+
+Clarification records also now carry their prompt trace and usage. They previously carried neither,
+which made the action a manager interacts with most the one with no record of what produced it.
+
+---
+
+## D-027 — One lock, covering answers and advisory execution together
+
+**Status:** Confirmed · 2026-09-18
+
+`run_turn` takes an optional `prepare` callable, executed inside the session lock before the turn
+begins. Recording the manager's answers goes through it.
+
+**The defect.** The answers endpoint wrote answers outside the lock, so a submission could land
+while another turn was awaiting a model response. The advice would then have been generated against
+one set of answers and committed against another, with nothing to detect it.
+
+**Why a hook rather than a second lock.** There is exactly one lock in the system and nothing
+inside it acquires another, so there is no acquisition order to get wrong and no deadlock to have.
+A separate answers lock would have introduced both.
+
+A failure in `prepare`, such as an answer for a question never asked, propagates to the caller with
+no turn consumed and the lock released.
+
+---
+
+## D-028 — What we claim about schema support, and what we do not
+
+**Status:** Confirmed · 2026-09-18 · corrects an overclaim in D-019
+
+The wire layer stays. Its justification changes.
+
+**What was claimed and was too broad.** That Structured Outputs does not support `pattern`,
+`minLength`, `maxLength`, `minItems`, `maxItems` or numeric bounds, full stop. The project owner
+reports that the documentation distinguishes additional restrictions applying to fine-tuned models,
+which makes a universal claim wrong.
+
+**What we could actually verify.** Not much, and the honest thing is to say so. The official guide
+was retrieved three times and truncated before its supported-schemas section each time, so the
+per-keyword list could not be read directly.
+
+**What we claim now.** Only what we chose. The wire models use a deliberately conservative subset:
+every field required, no defaults, no constraints, no numeric types. That is narrow enough that the
+question of which keywords are supported does not arise for us.
+
+**Three things kept apart.** Our chosen subset is a decision. Local schema conversion checks run
+offline and prove only that our models stay inside that subset. Service acceptance is established
+only by OpenAI accepting a real request, and **that has not happened yet.** No test result and no
+local check is evidence of it.
+
+The general lesson is the same one as D-016 and D-018: state the narrow true thing rather than the
+broad convenient one. A local check that passes is not a remote service that agreed.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

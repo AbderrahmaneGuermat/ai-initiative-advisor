@@ -15,6 +15,7 @@ presented as live model output.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,6 +33,18 @@ class RecordedCall:
     schema_name: str
 
 
+@dataclass
+class Delayed:
+    """A queued response that takes time to arrive.
+
+    Used to test the turn deadline and the session lock, both of which only
+    matter while a call is in flight.
+    """
+
+    payload: Any
+    seconds: float
+
+
 class ScriptedClient:
     """Returns queued responses in order, recording every request.
 
@@ -42,6 +55,9 @@ class ScriptedClient:
     def __init__(self, responses: list[Any] | None = None) -> None:
         self.responses: list[Any] = list(responses or [])
         self.calls: list[RecordedCall] = []
+        #: Optional hook invoked inside each call, for observing state while a
+        #: request is in flight.
+        self.on_call: Any = None
 
     @property
     def model_name(self) -> str:
@@ -73,6 +89,16 @@ class ScriptedClient:
             )
 
         item = self.responses.pop(0)
+
+        if isinstance(item, Delayed):
+            # Sleeps inside the awaited call, exactly where a real request
+            # would. asyncio.wait_for can therefore cancel it.
+            await asyncio.sleep(item.seconds)
+            item = item.payload
+
+        if self.on_call is not None:
+            self.on_call(len(self.calls))
+
         if isinstance(item, Exception):
             raise item
 

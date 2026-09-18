@@ -42,9 +42,10 @@ export default function BackendStatus({ connection }: { connection: ConnectionSt
           Backend connected · v{health.version} · stage: {health.stage}
         </span>
         <span className="status__detail">
-          {health.model_configured
-            ? "Advisor ready"
-            : "No model configured. Advisory steps will not run until MODEL_API_KEY is set."}
+          {health.model_configured_locally
+            ? "Model configured. Credentials are checked on the first request."
+            : health.configuration_problems[0] ??
+              "No model configured. Advisory steps will not run until it is set up."}
         </span>
       </div>
     </div>

@@ -12,7 +12,13 @@ export interface HealthResponse {
   service: string;
   version: string;
   stage: string;
-  model_configured: boolean;
+  /**
+   * Whether usable configuration is present on the server. Not authentication:
+   * only a completed provider request establishes that the key works.
+   */
+  model_configured_locally: boolean;
+  configuration_problems: string[];
+  configuration_note: string;
   implemented: string[];
   not_implemented: string[];
 }

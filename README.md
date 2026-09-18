@@ -43,7 +43,8 @@ and a validator. It does not mean it does anything.
 | Bounded advisory loop with a prompt choosing the next action | **Works**, tested |
 | Runtime prompts loaded from disk on every call, with content hashes | **Works**, tested |
 | One validation boundary before anything reaches session state | **Works**, tested |
-| Limits on actions, requests, input size and time | **Works**, tested |
+| Limits on actions, requests, input size and time | **Works**, tested. Time is a deadline around each request, not a check between steps |
+| Full execution trace: selector, action and repair attempts, with usage | **Works**, tested |
 | One repair attempt per invalid output | **Works**, tested |
 | Explicit handling of missing keys, auth, rate limits, timeouts, refusals, truncation | **Works**, tested |
 | Revision | **Validated but not offered.** The contract and its checks exist; the user flow does not |
@@ -52,9 +53,23 @@ and a validator. It does not mean it does anything.
 | Export | **Not implemented** |
 
 **Live verification is pending.** Every automated test uses deterministic doubles, and no API key
-was available in the environment where this was built, so no request has been made to OpenAI. The
-integration is complete and tested against doubles; whether it behaves as expected against the real
-service has not yet been observed. See the smoke test steps below.
+was available in the environment where this was built, so **no request has ever been made to
+OpenAI**. The integration is complete and tested against doubles; whether it behaves as expected
+against the real service has not been observed. See the smoke test steps below.
+
+Three things worth keeping apart, because it is easy to run them together:
+
+| | What it means | Established? |
+|---|---|---|
+| **Our chosen schema subset** | What the application sends: every field required, no defaults, no constraints | A decision we made |
+| **Local schema checks** | Those models convert through the SDK's strict-schema helper without stepping outside that subset | Yes, offline. Proves nothing about the service |
+| **Service acceptance** | OpenAI accepts a request carrying one of these schemas | **No. Not yet observed** |
+
+The precise list of JSON Schema keywords the service supports could not be retrieved when this was
+written: the official guide truncated before its supported-schemas section. Rather than guess, the
+wire models use a subset narrow enough that the question does not arise. An earlier revision
+asserted that pattern, string-length, array-length and numeric bounds are universally rejected.
+That claim was too broad and has been withdrawn.
 
 ---
 
@@ -218,12 +233,21 @@ documentation is at <http://localhost:8000/docs>.
 The application starts without a key. The interface says the advisor is not configured, and any
 attempt to start a session returns a clear message rather than failing obscurely.
 
+The status the interface shows is **local configuration presence**, not a successful connection.
+It says the settings look usable. Whether the key actually works is established by the first
+request, and a bad key produces a distinct authentication error at that point.
+
+A placeholder does not count as configured. Copying `.env.example` and forgetting to edit it is the
+most likely setup mistake, and the health endpoint reports it as a problem rather than reporting
+the advisor as ready.
+
 To enable it, on your own machine:
 
 1. Create a key at <https://platform.openai.com/api-keys>.
 2. Copy the example file: `Copy-Item .env.example .env` on Windows, or `cp .env.example .env`.
 3. Open `.env` in an editor and replace `your-openai-api-key-here` with your key.
-4. Restart the backend.
+4. Restart the backend. `.env` is read once at startup, so an edit does not take effect until
+   you do.
 
 `.env` is git-ignored, and `git check-ignore .env` confirms it. **Do not paste your key into a
 chat, an issue, a commit, or this file.** If one is ever exposed, revoke it on the same page it
@@ -242,8 +266,13 @@ Confirm it is picked up without revealing it:
 curl http://localhost:8000/api/health
 ```
 
-`model_configured` becomes `true`. The key itself is never returned by any endpoint, never
-logged, and never sent to the browser.
+`model_configured_locally` becomes `true`, and `configuration_problems` empties. The key itself is
+never returned by any endpoint, never logged, and never sent to the browser.
+
+**That flag means the settings look usable, not that they work.** Whether the key is valid is only
+established by a completed request, so the first session is also the first real test of the
+credentials. A bad key produces a clear authentication error at that point, distinct from the
+not-configured message.
 
 ### Cost
 

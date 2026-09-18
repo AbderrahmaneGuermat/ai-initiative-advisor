@@ -185,9 +185,13 @@ def test_one_repair_attempt_is_made_and_succeeds(session):
     assert session.comparison is not None
     assert result.error is None
 
-    repaired = [trace for trace in result.traces if trace.get("repaired")]
-    assert len(repaired) == 1
-    assert any("context_id" in error for error in repaired[0]["original_errors"])
+    repairs = [a for a in result.attempts if a["kind"] == "repair"]
+    assert len(repairs) == 1
+    assert repairs[0]["outcome"] == "accepted"
+
+    rejected = [a for a in result.attempts if a["outcome"] == "rejected"]
+    assert len(rejected) == 1
+    assert any("context_id" in detail for detail in rejected[0]["detail"])
 
 
 def test_a_failed_repair_is_not_retried_and_nothing_is_committed(session):
@@ -376,7 +380,7 @@ def test_an_unimplemented_provider_is_refused_rather_than_substituted(monkeypatc
     monkeypatch.setattr(settings, "model_provider", "anthropic")
     monkeypatch.setattr(settings, "model_api_key", "test-key")
 
-    with pytest.raises(ModelNotConfigured, match="only 'openai' is implemented"):
+    with pytest.raises(ModelNotConfigured, match="no adapter"):
         build_client()
 
 

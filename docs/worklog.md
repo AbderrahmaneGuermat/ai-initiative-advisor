@@ -560,3 +560,106 @@ latency, or real token cost. The README documents the smoke test to run once a k
 
 The advisory flow works against deterministic doubles and is ready for a live smoke test. Committed
 and pushed. Awaiting the project owner's live run and review.
+
+---
+
+## 2026-09-18 — Prompt [006](prompts/006-live-test-readiness.md), live test readiness
+
+**Instruction:** Fix five findings raised against commit `a19dce9` before the first live test. No
+new features.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+### What was wrong, and what was done
+
+**1. Configuration status accepted the committed placeholder.** `Settings.model_configured`
+returned true for any non-empty provider and key, so copying `.env.example` without editing it
+reported the advisor as ready. Replaced with one check in `app/core/configuration.py`, shared by the
+health endpoint and client construction, rejecting empty values, an explicit placeholder list and
+providers with no adapter. No format rule is imposed on the key. The field is renamed
+`model_configured_locally` and every response carries a note saying it is not authentication.
+Recorded as D-024.
+
+**2. The turn deadline could be crossed in flight.** `check_time()` ran only between iterations, so
+a slow request could overrun the limit and still commit. The remaining budget now bounds each
+awaited call through `asyncio.wait_for`, and is re-checked before anything is committed. Cancelled
+and late results are recorded and discarded. `finally` guarantees the status returns to ready and
+the lock is released. Recorded as D-025.
+
+**3. The execution trace was lost.** `TurnResult.traces` was never persisted and the trace endpoint
+read only accepted outputs, so selector calls, repair costs and failed requests left no record.
+Added `session.attempts`, append-only, written as each attempt completes so successful ones survive
+a later failure. Usage is reported only where the provider gave it, with `usage_available` explicit.
+Clarification records now carry their prompt trace and usage, which they previously lacked entirely.
+Recorded as D-026.
+
+**4. Answers were written outside the session lock.** A submission could modify answers while a turn
+was awaiting a model response, so advice could be generated against one set and committed against
+another. `run_turn` now takes a `prepare` callable executed inside the lock. One lock, nothing
+nested, no deadlock available. Recorded as D-027.
+
+**5. The schema claim was too broad.** See below.
+
+### The schema documentation, and what could not be verified
+
+The official guide at <https://developers.openai.com/api/docs/guides/structured-outputs> was
+retrieved three times in this session, including with an anchored URL. **Every retrieval truncated
+before the supported-schemas section**, ending mid-sentence in "Tips and best practices". A targeted
+search of the returned content for "fine-tuned", "additional restrictions", "minLength", "pattern"
+and "minItems" found none of them present. A web search returned only third-party summaries, which
+disagreed with each other.
+
+So the per-keyword support list **could not be verified from the official source here**, and this
+entry says so rather than implying otherwise. The project owner's statement that the documentation
+distinguishes additional restrictions for fine-tuned models is recorded as their report, attributed
+to them.
+
+The previous blanket claim is withdrawn. The wire layer stays, rejustified: it is a deliberately
+conservative subset we chose, not a description of what the service rejects. Three things are now
+kept apart in the documentation and in the module docstring: our chosen subset, local conversion
+checks, and actual service acceptance. **Only the first two have been established. No request has
+ever been made to OpenAI.** Recorded as D-028.
+
+### Checks performed
+
+All executed in this session on Windows 11, Python 3.14.5.
+
+| Check | Result |
+|---|---|
+| `pytest backend` | **133 passed**, 0 failed (was 108) |
+| Frontend `tsc --noEmit` and `npm run build` | Both pass |
+| Committed placeholder rejected, in the running app | `configured_locally: false`, with the placeholder named |
+| Session refused with the placeholder | HTTP 503, `ModelNotConfigured`, problem listed |
+| An unusual-format key accepted, in the running app | `configured_locally: true`, no problems |
+| Health check and client construction agree | Same function, asserted |
+| In-flight deadline overrun cancelled | Passes, and completes in under 2s rather than waiting 5s |
+| Nothing committed after an overrun; session usable; lock released | Passes |
+| Cancelled request recorded with no invented usage | Passes |
+| Selector calls recorded with prompt hash and usage | Passes |
+| Repair records both attempts, each with its own usage | Passes |
+| Clarification record carries provenance and usage | Passes |
+| Completed attempts survive a later failure in the same turn | Passes |
+| Answers cannot be applied while a turn is in flight | Passes, observed from inside the call |
+| Refused submission consumes no turn and leaves the lock free | Passes |
+| Two concurrent turns do not interleave | Passes |
+
+### Issues and observations
+
+1. **A stale process nearly produced a false verification.** The first end-to-end check returned the
+   old health shape. The cause was a backend left listening on port 8000 from an earlier run, which
+   the new dev server could not replace; `pkill -f uvicorn` had not matched it on Windows. The
+   servers were killed by PID and the check re-run. Worth recording because the failure mode looked
+   like a code defect and was not: a green check against a stale process is worse than a red one.
+2. **`.env` is read once at startup.** Editing it while the backend runs changes nothing, because
+   the file sits outside the reload watch directory. The README now says to restart after editing.
+3. **A small accounting fix.** The request counter was incremented before the deadline check, so a
+   request that was never sent could be charged. Reordered.
+4. **Live verification remains pending.** No API key was available, so nothing in this iteration
+   made a request to OpenAI. Prompt quality, real latency, real cost and whether the service accepts
+   these schemas are all still unobserved.
+
+### Status at end of entry
+
+The five findings are fixed and covered by regression tests. Committed and pushed. The project owner
+will configure a key locally and run the first live user-flow test; **live verification stays marked
+pending until that actually happens.**

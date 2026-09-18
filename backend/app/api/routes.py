@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from app.config import APP_VERSION, BUILD_STAGE, settings
 from app.core.advisory import SUPPORTED_ACTIONS, AdvisoryEngine, permitted_actions
+from app.core.configuration import check_configuration
 from app.core.model_client import ModelError, ModelNotConfigured, build_client
 from app.core.prompt_loader import PromptError, available_prompts, load_prompt
 from app.data import load_sample_brief, sample_scenario_id
@@ -38,21 +39,38 @@ class HealthResponse(BaseModel):
     service: str
     version: str
     stage: str
-    model_configured: bool = Field(
-        description="Whether a provider and key are present. The key itself is never returned."
+    model_configured_locally: bool = Field(
+        description=(
+            "Whether usable local configuration is present. NOT authentication: only a "
+            "completed request to the provider establishes that the credentials work. "
+            "The key itself is never returned."
+        )
     )
+    configuration_problems: list[str] = Field(
+        description="What is missing or unusable about the local configuration, if anything"
+    )
+    configuration_note: str
     implemented: list[str]
     not_implemented: list[str]
 
 
 @router.get("/health", response_model=HealthResponse, summary="Service health and build stage")
 def health() -> HealthResponse:
+    """Service health and local configuration presence.
+
+    ``model_configured_locally`` says the settings look usable. It does not say
+    the credentials work, because nothing short of a completed provider request
+    establishes that.
+    """
+    configuration = check_configuration()
     return HealthResponse(
         status="ok",
         service="AI Initiative Advisor backend",
         version=APP_VERSION,
         stage=BUILD_STAGE,
-        model_configured=settings.model_configured,
+        model_configured_locally=configuration.configured_locally,
+        configuration_problems=configuration.problems,
+        configuration_note=configuration.note,
         implemented=[
             "health",
             "data contracts",
@@ -90,12 +108,14 @@ def diagnostics() -> dict[str, Any]:
         prompts = []
         prompt_error = str(exc)
 
+    configuration = check_configuration()
+
     return {
         "stage": BUILD_STAGE,
         "version": APP_VERSION,
-        "provider": settings.model_provider,
-        "model": settings.model_name or settings.default_model_name,
-        "model_configured": settings.model_configured,
+        "configuration": configuration.as_dict(),
+        "provider": configuration.provider,
+        "model": configuration.model,
         "max_output_tokens": settings.max_output_tokens,
         "model_timeout_seconds": settings.model_timeout_seconds,
         "supported_actions": sorted(a.value for a in SUPPORTED_ACTIONS),
@@ -205,6 +225,7 @@ def _engine() -> AdvisoryEngine:
             detail={
                 "kind": "ModelNotConfigured",
                 "message": exc.user_message,
+                "details": exc.problems,
                 "recoverable": False,
             },
         ) from exc
@@ -248,12 +269,18 @@ async def submit_answers(session_id: str, submission: AnswerSubmission) -> dict[
 
     engine = _engine()
 
-    try:
+    # The answers are written inside the session lock, by run_turn, so they
+    # cannot change while a turn is awaiting a model response. Writing them
+    # here, outside the lock, would allow advice to be generated against one set
+    # of answers and committed against another.
+    def record() -> None:
         session.record_answers(submission.answers, set(submission.skipped))
+
+    try:
+        turn = await engine.run_turn(session, prepare=record)
     except SessionStateError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
-    turn = await engine.run_turn(session)
     return _session_view(session, turn)
 
 
@@ -286,6 +313,12 @@ async def session_trace(session_id: str) -> dict[str, Any]:
         "last_budget": session.last_budget,
         "last_error": session.last_error,
         "permitted_now": sorted(a.value for a in permitted_actions(session)),
+        # Every provider request attempted, in order: selector calls, actions,
+        # repairs, rejections and failures. Usage is reported only where the
+        # provider actually gave it, and never invented for a request that
+        # failed or was cancelled.
+        "attempts": [attempt.as_dict() for attempt in session.attempts],
+        # What the application accepted and now holds as advice.
         "records": [
             {
                 "action": record.action.value,
@@ -293,6 +326,8 @@ async def session_trace(session_id: str) -> dict[str, Any]:
                 "created_at": record.created_at,
                 "prompt": record.prompt_trace,
                 "usage": record.usage,
+                "repaired": record.repaired,
+                "repair_usage": record.repair_usage,
             }
             for record in session.records
         ],

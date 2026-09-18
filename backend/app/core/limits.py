@@ -10,18 +10,26 @@ The request budget counts **every** call to the provider, including the
 next-action selector and any repair attempt. Excluding them would make the
 budget a fiction: a turn could issue three selector calls, three actions and
 three repairs while reporting three requests.
+
+The wall-clock budget is a **deadline**, not a between-steps check. An earlier
+version tested elapsed time only between loop iterations, so a single slow
+request could run well past the limit and still commit its output. The deadline
+is now applied around each awaited call and re-checked before anything is
+written, so a turn that overruns is cancelled rather than merely noticed
+afterwards.
 """
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 
 class LimitExceeded(RuntimeError):
     """A turn hit a ceiling and was stopped.
 
-    Not an error in the sense of a defect. It is the limit doing its job, and it
-    is reported to the manager as the advisor stopping rather than as a crash.
+    Not a defect. It is the limit doing its job, and it is reported to the
+    manager as the advisor stopping rather than as a crash.
     """
 
     def __init__(self, limit_name: str, detail: str) -> None:
@@ -43,7 +51,7 @@ class Limits:
     #: Characters of assembled input per request. A cheap guard against an
     #: oversized brief becoming an expensive call.
     max_input_chars: int = 60_000
-    #: Wall-clock seconds for the whole turn.
+    #: Wall-clock seconds for the whole turn, enforced as a deadline.
     max_turn_seconds: float = 180.0
 
 
@@ -57,7 +65,48 @@ class TurnBudget:
     limits: Limits = field(default_factory=Limits)
     actions_taken: int = 0
     model_requests: int = 0
+    started_at: float | None = None
     elapsed_seconds: float = 0.0
+
+    # --- Time -------------------------------------------------------------
+
+    def start(self) -> None:
+        self.started_at = time.monotonic()
+
+    def elapsed(self) -> float:
+        if self.started_at is None:
+            return 0.0
+        self.elapsed_seconds = time.monotonic() - self.started_at
+        return self.elapsed_seconds
+
+    def remaining(self) -> float:
+        """Seconds left before the deadline. May be zero or negative."""
+        return self.limits.max_turn_seconds - self.elapsed()
+
+    def require_time(self, what: str) -> float:
+        """Seconds available for ``what``, or raise if the deadline has passed.
+
+        Called immediately before an awaited call, to bound it, and immediately
+        after, to stop a result that arrived too late from being committed.
+        """
+        left = self.remaining()
+        if left <= 0:
+            raise LimitExceeded(
+                "max_turn_seconds",
+                f"the turn deadline of {self.limits.max_turn_seconds:.0f}s passed "
+                f"during {what} (elapsed {self.elapsed_seconds:.1f}s)",
+            )
+        return left
+
+    def expired(self, what: str) -> LimitExceeded:
+        """The error to raise when an awaited call was cancelled by the deadline."""
+        return LimitExceeded(
+            "max_turn_seconds",
+            f"{what} was cancelled after the turn deadline of "
+            f"{self.limits.max_turn_seconds:.0f}s (elapsed {self.elapsed():.1f}s)",
+        )
+
+    # --- Countable resources ---------------------------------------------
 
     def check_input_size(self, text: str) -> None:
         if len(text) > self.limits.max_input_chars:
@@ -68,7 +117,7 @@ class TurnBudget:
             )
 
     def charge_model_request(self) -> None:
-        """Count one provider request. Called for selector, action and repair alike."""
+        """Count one provider request. Selector, action and repair alike."""
         if self.model_requests >= self.limits.max_model_requests:
             raise LimitExceeded(
                 "max_model_requests",
@@ -84,20 +133,12 @@ class TurnBudget:
             )
         self.actions_taken += 1
 
-    def check_time(self, elapsed: float) -> None:
-        self.elapsed_seconds = elapsed
-        if elapsed > self.limits.max_turn_seconds:
-            raise LimitExceeded(
-                "max_turn_seconds",
-                f"this turn has run for {elapsed:.1f}s, over the "
-                f"{self.limits.max_turn_seconds:.0f}s limit",
-            )
-
     def summary(self) -> dict[str, float | int]:
         return {
             "actions_taken": self.actions_taken,
             "model_requests": self.model_requests,
-            "elapsed_seconds": round(self.elapsed_seconds, 2),
+            "elapsed_seconds": round(self.elapsed(), 2),
             "max_actions": self.limits.max_actions,
             "max_model_requests": self.limits.max_model_requests,
+            "max_turn_seconds": self.limits.max_turn_seconds,
         }
