@@ -214,3 +214,89 @@ Python 3.14.5.
 Documentation corrected and committed. Skeleton implemented, running and committed separately. No
 remote configured and nothing pushed, as instructed. Awaiting review before the advisory loop,
 runtime prompts and model integration are built.
+
+---
+
+## 2026-09-18 — Prompt [003](prompts/003-publish-to-github.md), publish to GitHub
+
+**Instruction:** Publish the existing local repository to a confirmed public GitHub destination,
+after verifying the authenticated account, the existing remotes and the absence of secrets. No new
+features.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+### Work completed
+
+1. Saved the instruction verbatim as
+   [prompts/003-publish-to-github.md](prompts/003-publish-to-github.md) and added it to the prompt
+   index, before making any change.
+2. Verified the authenticated GitHub identity.
+3. Inspected the local repository and its remotes.
+4. Scanned every tracked file and the full commit history for credentials and confidential
+   material.
+5. Committed the prompt record.
+6. Configured `origin` and pushed `master` with its upstream set.
+7. Verified the published result against the local repository.
+
+### Checks performed
+
+**Authentication.** The GitHub CLI is not installed on this machine, so the identity was confirmed
+through the credential helper and the GitHub API instead. Git Credential Manager holds a
+credential for `github.com` under the username `AbderrahmaneGuermat`. Calling
+`GET https://api.github.com/user` with that credential returned HTTP 200 and
+`login: AbderrahmaneGuermat`, user id 61157096. The same credential reports `admin`, `maintain`
+and `push` permissions on the destination repository. **The active account is the expected one.**
+
+**Destination.** `AbderrahmaneGuermat/ai-initiative-advisor` existed, was public, and was empty
+before the push, with a reported size of 0 and a default branch of `master`.
+
+**Remotes before the change.** None. `git remote` listed nothing, so no existing `origin` pointed
+anywhere else and nothing was reconfigured or overwritten.
+
+**Branch.** The local branch was `master`, matching the repository's default branch. It was pushed
+under its existing name. No branch was renamed, and no force-push was used.
+
+**Secret and confidentiality scan.**
+
+| Check | Result |
+|---|---|
+| Every file ever added across all commits, listed and reviewed | 38 files before this entry, all expected |
+| `.env`, `.venv/`, `node_modules/` or `dist/` anywhere in history | None. Never committed at any point |
+| Provider key patterns across all commits, including OpenAI, Anthropic, GitHub, AWS, Slack, PEM private keys and bearer tokens | No matches |
+| Assignment-style secrets, such as a key, token, secret or password set to a long value | No matches |
+| Only key-shaped line in the repository | `MODEL_API_KEY=your-api-key-here` in `.env.example`, a placeholder |
+| Email addresses in tracked file contents | None |
+| Named employer, client or customer in the documentation | None. Only generic references, all of which state that no such data is used |
+
+**Publication result.**
+
+| Check | Result |
+|---|---|
+| Push | `master -> master`, new branch, upstream set to `origin/master` |
+| Local `master` against `origin/master` | Identical, both at `2ce503a` at the time of the push |
+| `git diff master origin/master` | Empty. Trees identical |
+| Commit history on the remote | All four commits present, in order, unmodified |
+| File list on the remote, read back through the GitHub trees API | 39 blobs, exactly matching the 39 locally tracked files. Nothing extra, nothing missing |
+| Excluded paths on the remote | None. No `.env`, no dependency directory, no build output |
+
+### Issues and observations
+
+1. **The GitHub CLI is not installed**, so the account verification used the credential helper and
+   the GitHub REST API rather than `gh auth status`. The result is equivalent, since the token
+   checked is the one Git itself uses to push, but it is worth recording that the usual tool was
+   not available.
+2. **Commit authorship is now public.** The three earlier commits and this one carry the author
+   name `Abderrahmane` and the address `abdeguermat@gmail.com`, taken from the local Git
+   configuration. This is normal for a personal repository and was not changed, but it is stated
+   here because the repository is public and the address is therefore visible to anyone.
+3. **No secret scanning tool was run.** The checks above are pattern searches over the repository
+   and its history, performed here. They found nothing, but they are not a substitute for GitHub's
+   own secret scanning, which the project owner may wish to enable on the repository settings.
+4. The application itself is unchanged. It remains at the skeleton stage, and nothing about
+   publication altered what the software does.
+
+### Status at end of entry
+
+Published to <https://github.com/AbderrahmaneGuermat/ai-initiative-advisor> on branch `master`,
+with history preserved and upstream tracking configured. No features were added. Awaiting review
+before the advisory loop, runtime prompts and model integration are built.
