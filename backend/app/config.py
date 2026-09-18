@@ -18,8 +18,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # The stage this build is at. Reported by the health endpoint so that anyone
 # calling the API can tell how much of the application actually exists.
-BUILD_STAGE = "data-contracts"
-APP_VERSION = "0.0.2"
+BUILD_STAGE = "advisory-flow"
+APP_VERSION = "0.1.0"
+
+#: Used when MODEL_NAME is unset. Configurable, and never switched silently:
+#: if a different model is wanted, it is set here or in .env, not chosen by the
+#: application at runtime.
+DEFAULT_MODEL_NAME = "gpt-5-mini"
 
 
 class Settings(BaseSettings):
@@ -55,6 +60,17 @@ class Settings(BaseSettings):
     # interface, and a failed live call is never silently replaced by a
     # fixture. See docs/decisions.md, D-009.
     offline_fixture_mode: bool = False
+
+    # --- Request shaping --------------------------------------------------
+    #: Ceiling on generated tokens per request. A comparison over several
+    #: initiatives is the largest output this application asks for.
+    max_output_tokens: int = 8000
+    #: Per-request timeout in seconds, passed to the SDK.
+    model_timeout_seconds: float = 90.0
+
+    @property
+    def default_model_name(self) -> str:
+        return DEFAULT_MODEL_NAME
 
     @property
     def cors_origins(self) -> list[str]:

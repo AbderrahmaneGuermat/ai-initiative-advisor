@@ -42,8 +42,9 @@ export default function BackendStatus({ connection }: { connection: ConnectionSt
           Backend connected · v{health.version} · stage: {health.stage}
         </span>
         <span className="status__detail">
-          Model provider {health.model_configured ? "configured" : "not configured"}
-          {health.offline_fixture_mode ? " · offline sample-data mode" : ""}
+          {health.model_configured
+            ? "Advisor ready"
+            : "No model configured. Advisory steps will not run until MODEL_API_KEY is set."}
         </span>
       </div>
     </div>

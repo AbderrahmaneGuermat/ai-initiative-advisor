@@ -435,3 +435,128 @@ All executed in this session on Windows 11, Python 3.14.5.
 Corrections applied, contracts implemented and tested, one worked example validated. Committed and
 pushed to the confirmed repository. Awaiting review before runtime prompts, the model client and
 the advisory loop are built.
+
+---
+
+## 2026-09-18 — Prompt [005](prompts/005-openai-advisory-flow.md), OpenAI integration and the first advisory flow
+
+**Instruction:** Integrate OpenAI, implement the runtime prompts and a bounded advisory loop, add a
+single validation boundary, wire the interface, and verify with deterministic doubles.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+### The finding that shaped the iteration
+
+Before writing any adapter, the existing contracts were checked against the SDK's own strict-schema
+converter. **Every one of them emitted at least one keyword Structured Outputs does not support**:
+
+| Contract | Unsupported keywords present |
+|---|---|
+| NextAction | minLength |
+| Diagnosis | minLength, default |
+| ContextRequest | minLength, minItems |
+| ClarificationBatch | minLength, pattern, minItems, maxItems, default |
+| Comparison | minLength, pattern, minItems, default |
+| Recommendation | minLength, pattern, minItems, default |
+| Revision | minLength, pattern, minItems, default |
+
+Sending them would have meant either a rejected schema or constraints silently dropped. The answer
+was a separate wire layer, `app/models/wire.py`, compatible by construction, with the strict
+contracts applied afterwards in the validation boundary. Recorded as D-019. A check confirms all
+sixteen wire models convert with zero unsupported keywords.
+
+### What was built
+
+**OpenAI integration.** Async SDK, Responses API, `responses.parse` with a Pydantic wire model as
+`text_format`. Default `gpt-5-mini`, configurable, never switched by the application. SDK retries
+disabled so no request escapes the budget. Missing credentials, authentication, rate limits,
+timeouts, connection loss, rejected requests, refusals and truncated output each map to a named
+exception carrying whether a retry could help.
+
+**Runtime prompts.** Eight files under `backend/prompts/`, each with front matter declaring
+identifier, version, role, inputs, outputs and constraints. Read from disk **on every execution**,
+never cached, with a SHA-256 content hash recorded in the session trace.
+
+**The advisory loop.** The next-action prompt chooses; Python fixes the permitted set, the
+prerequisites, the ceilings and whether output may be kept. `await_user` makes no model call.
+Limits cover actions, requests, input size and wall-clock time, and the request budget counts
+selector and repair calls, so it cannot be gamed.
+
+**The validation boundary.** One entry point. Contract, context identity, references, question
+status, prior outputs, revision snapshots. Two review findings closed, both with regression tests.
+
+**Interface.** The three panels now work: load and edit the brief, start a session, answer or skip
+questions, see the comparison and recommendation, see loading and recoverable errors. Open
+questions render from session state rather than from the advice text.
+
+**Worked examples corrected.** The revision example claimed route optimisation "cannot be done
+properly" at 60,000 EUR. No cost estimate exists for any option in that scenario, so the budget
+establishes nothing about feasibility. Rewritten so the stance change rests on the shrinking margin
+for being wrong about an unestimated cost, and a new open unknown names the missing estimates
+directly. Their attribution as hand-authored fiction is unchanged.
+
+### Checks performed
+
+All executed in this session on Windows 11, Python 3.14.5, openai SDK 3.16.1.
+
+| Check | Result |
+|---|---|
+| `pytest backend` | **108 passed**, 0 failed |
+| Wire schema compatibility, all 16 models | All convert with zero unsupported keywords |
+| Frontend `tsc --noEmit` | Passed |
+| `npm run build` | Passed, 35 modules |
+| Backend imports; all 8 prompts load with valid front matter | Passed |
+| Full flow: diagnose, clarify, pause, answer, compare, recommend | Passed, via the API with a double |
+| `await_user` makes no second model call | Passed, one request recorded |
+| Repair: one attempt, succeeds | Passed |
+| Repair: second failure stops, commits nothing, exactly three requests | Passed |
+| Invalid output does not replace previously validated advice | Passed |
+| Request, action and input-size limits stop the loop | Passed |
+| Provider failures surface and commit nothing, four kinds | Passed |
+| Unrelated context identifier rejected | Passed, regression |
+| Revision with a nonexistent constraint rejected | Passed, regression |
+| Revision with misreported values rejected | Passed |
+| Skipped question: preserved, not re-askable, not citable | Passed |
+| Four-question batch valid on the wire, rejected by the contract | Passed |
+| Prompt edits reach the adapter without a restart | Passed, asserted on instructions actually sent |
+| Manager text fenced; delimiter injection neutralised | Passed |
+| App starts and serves health and scenario with no credentials | Passed |
+
+### Live verification: PENDING
+
+**No request has been made to OpenAI.** No API key was present in this environment, so the smoke
+test could not run. Every test above uses deterministic doubles.
+
+What that means precisely: the integration is complete, the schemas are confirmed compatible with
+the documented Structured Outputs subset, and the failure paths are exercised. What has **not** been
+observed is the real service accepting these schemas, the quality of what `gpt-5-mini` returns, real
+latency, or real token cost. The README documents the smoke test to run once a key is configured.
+
+### Issues and observations
+
+1. **A deadlock was found by a test, not by inspection.** The first implementation blocked while any
+   question was unanswered, so a manager who answered two of three and left the third alone would
+   never receive advice. Blocking is now per round: once the manager submits, the round stops
+   blocking and untouched questions become open unknowns. Recorded as D-023. This is also the more
+   honest semantics, since leaving a field blank is itself an answer.
+2. **A false test failure, worth recording.** The numeric-field guard from the previous iteration
+   had searched annotation reprs for `int`, matching the substring inside `StringConstraints`. It
+   was rewritten to walk types structurally. Mentioned again because it is the same class of
+   mistake as trusting the API to enforce our constraints: checking the appearance of a thing
+   rather than the thing.
+3. **Prompt quality is untested.** Nothing here establishes that the prompts elicit good advice.
+   The doubles return whatever the test scripted. Only a live run with a person reading the output
+   can judge that, and it has not happened.
+4. **`revise` is validated but not offered.** Its contract and checks exist and are tested. Its user
+   flow does not, so it is excluded from the advertised action set rather than left available to be
+   chosen and then fail.
+5. **Sessions are lost on restart.** In-memory only, stated in three places.
+6. **No in-process API test existed before this iteration** because `httpx` was absent. It is now a
+   dependency and `tests/test_api.py` exercises the HTTP surface end to end.
+7. **Adding or removing brief items is not implemented.** Existing objectives, constraints and
+   initiatives can be edited; the lists themselves are fixed to what the scenario provides.
+
+### Status at end of entry
+
+The advisory flow works against deterministic doubles and is ready for a live smoke test. Committed
+and pushed. Awaiting the project owner's live run and review.

@@ -10,9 +10,13 @@ pydantic>=2.9,<3.0
 pydantic-settings>=2.5,<3.0
 python-dotenv>=1.0,<2.0
 
-# Parses YAML front matter in runtime prompt files. Not used yet; the prompt
-# loader is not implemented.
+# Parses YAML front matter in runtime prompt files.
 PyYAML>=6.0,<7.0
+
+# Official OpenAI SDK. Used asynchronously, against the Responses API with
+# native Structured Outputs. Pinned below the next major version because the
+# adapter depends on specific exception classes and on responses.parse.
+openai>=1.60,<4.0
 
 
 # --- Development ------------------------------------------------------------
@@ -21,3 +25,6 @@ PyYAML>=6.0,<7.0
 # is one more thing a reviewer has to notice.
 
 pytest>=8.0,<9.0
+
+# Drives the ASGI app in process for the API tests. No server, no network.
+httpx>=0.27,<1.0

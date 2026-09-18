@@ -366,6 +366,118 @@ rigorous than saying we are faster in Python. It is not more rigorous. It is jus
 
 ---
 
+## D-019 — OpenAI, the Responses API, and a separate wire schema layer
+
+**Status:** Confirmed · 2026-09-18 · closes D-014
+
+Provider: OpenAI, via the official asynchronous Python SDK, the Responses API and native
+Structured Outputs. Default model `gpt-5-mini`, configurable through `MODEL_NAME` and never
+switched by the application itself.
+
+**The compatibility problem, and what we did about it.** Structured Outputs accepts a restricted
+subset of JSON Schema. It does not support `minLength`, `maxLength`, `pattern`, `minItems`,
+`maxItems` or `default`, and in strict mode every property must be required. We checked our
+contracts against the SDK's own strict-schema converter and **every one of them emitted at least
+one unsupported keyword**: pattern-constrained identifiers, minimum text lengths, the
+three-question cap, and defaults throughout.
+
+So there are two layers. `app/models/wire.py` holds API-facing schemas that are compatible by
+construction, and the application contracts stay exactly as strict as they were. Output crosses
+from one to the other in the validation boundary.
+
+**Why not relax the contracts to match.** Because the constraints are the point. A cap the API
+cannot enforce is still a cap we enforce; dropping it to fit the transport would be letting the
+protocol decide the product's rules. A test asserts that a four-question batch is valid on the
+wire and rejected by the application, which is the behaviour we want and evidence the split works.
+
+**Rejected:** Sending the strict contracts and hoping unsupported keywords are ignored. They are
+documented as unsupported, and relying on undocumented leniency is how a project acquires a
+failure nobody can reproduce.
+
+---
+
+## D-020 — Every provider failure is named, and none is ever papered over
+
+**Status:** Confirmed · 2026-09-18
+
+Missing credentials, authentication, rate limits, timeouts, connection loss, rejected requests,
+refusals and truncated output each map to a distinct exception carrying whether a retry could
+help. The SDK's own retry loop is disabled, so the application issues no request it did not count.
+
+**Why:** A generic "something went wrong" tells a manager nothing and tells a developer less. More
+importantly, this is where the temptation to substitute sample output lives, and the rule from
+D-009 holds without exception: **a failed live call is never replaced by fixture content.** A
+truncated response is discarded rather than partially used, because a comparison missing its last
+initiative would validate perfectly well as a comparison.
+
+**Rejected:** SDK-level retries. A retry the application cannot see is a request it cannot budget
+for, which would make the request ceiling a fiction.
+
+---
+
+## D-021 — One validation boundary, and what it now catches
+
+**Status:** Confirmed · 2026-09-18 · extends D-005
+
+Every advisory output passes through `validate_output` before it can reach session state. There is
+one entry point, because a second path would be a hole in the only wall between unchecked model
+output and the manager's advice.
+
+Two gaps found in review are now closed:
+
+- **An unrelated context identifier used to pass.** Output naming another session's context would
+  attach to whichever session received it, which is how advice about one situation gets presented
+  as advice about another.
+- **A revision could report a change to a constraint that does not exist.** Revision validation now
+  requires two real snapshots and checks every reported before-and-after value against them.
+
+Both have regression tests. `revise` remains unavailable in the interface: its validation exists,
+its user flow does not, and advertising an action the application cannot complete would invite the
+selector to choose it and then fail.
+
+---
+
+## D-022 — Manager text is case material, and the defences that actually hold
+
+**Status:** Confirmed · 2026-09-18
+
+Everything the manager typed reaches the model inside a fenced block that states it is information
+rather than instruction, and the standing prompt repeats the rule. A manager who types the closing
+delimiter cannot end the block early, which is tested.
+
+**What we do not claim.** Prompt-level defences are mitigation, not proof. A determined injection
+can still try, and a sufficiently clever one may succeed at influencing the text the model
+produces.
+
+**What actually holds** is structural and sits outside the model's reach. The action set is fixed
+in code. Every output is validated. Every reference must resolve against the real brief. The
+manager's answers are written by a path no model output touches. The request budget is counted in
+Python. Text that talks its way past the prompt still cannot invent an initiative, cite a question
+the manager skipped, alter an answer, or buy itself another request.
+
+That is the honest division: the prompt discourages, the code prevents.
+
+---
+
+## D-023 — Sessions in memory, and a round is a unit of response
+
+**Status:** Confirmed · 2026-09-18
+
+Sessions live in process memory and are lost on restart. Stated in the README, in the module, and
+in the diagnostics endpoint, so it is visible wherever someone might assume otherwise.
+
+**A design correction found by a test.** The first implementation treated any unanswered question
+as blocking, which deadlocked the session: a manager who answered two of three questions and left
+the third alone never got advice, because the loop waited forever for a reply that was not coming.
+Blocking is now per round rather than per question. Once the manager submits anything for a round,
+that round stops blocking and whatever they left untouched becomes an open unknown, visible in the
+interface and carried into the advice.
+
+This is the correct semantics as well as the working one. A manager who leaves a field blank has
+answered: they have said they do not want to answer it.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

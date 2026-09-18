@@ -26,6 +26,7 @@ two are never mixed.
 | 002 | [002-design-review-and-skeleton.md](002-design-review-and-skeleton.md) | Design review corrections: assessment scope, adaptive orchestration, qualitative comparison, confirmed choices; then implement the skeleton only |
 | 003 | [003-publish-to-github.md](003-publish-to-github.md) | Publish the existing local repository to the confirmed public GitHub destination, verifying account, remotes and absence of secrets first |
 | 004 | [004-data-contracts-and-foundations.md](004-data-contracts-and-foundations.md) | Correct five documentation inconsistencies, implement the Pydantic data contracts, add one fictional worked example, and test the contract boundaries |
+| 005 | [005-openai-advisory-flow.md](005-openai-advisory-flow.md) | Integrate OpenAI, implement the runtime prompts, the bounded advisory loop, the validation boundary and a working interface |
 
 ## Attribution
 

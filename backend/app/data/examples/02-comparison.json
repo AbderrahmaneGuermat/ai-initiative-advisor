@@ -1,6 +1,6 @@
 {
   "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Not a recorded model response. No model has run in this project.",
-  "_shows": "Three initiatives across the five categories. Note what happens to the question the manager skipped: it does not become a low rating for INI-ROUTE, it becomes an entry under missing_evidence. Claims that rest on the manager's input cite it; assumptions carry no sources, which is the signal that they are assumptions.",
+  "_shows": "Three initiatives across the five categories. Note what happens to the question the manager skipped: it does not become a low rating for INI-ROUTE, it becomes an entry under missing_evidence. Claims that rest on the manager's input cite it; assumptions carry no sources, which is the signal that they are assumptions. Note also how the budget is handled: it is recorded as a stated limit alongside the fact that no cost has been estimated, never as a verdict that an option is unaffordable.",
 
   "context_id": "CTX-LARKFIELD-1",
 
@@ -88,6 +88,11 @@
           "description": "Whether dispatchers would follow suggested adjustments.",
           "why_it_matters": "A route tool that dispatchers override produces no benefit while still costing its full price.",
           "how_it_could_be_resolved": "Two hours with three dispatchers, before committing to anything."
+        },
+        {
+          "description": "What this initiative would cost, in licences and in internal time.",
+          "why_it_matters": "The budget is known and the cost is not, so nobody can yet say whether this fits. Without an estimate, any claim that it is affordable or unaffordable would be invented.",
+          "how_it_could_be_resolved": "Two or three vendor quotes, plus a rough internal estimate of dispatcher and IT time."
         }
       ],
       "feasibility_constraints": [
@@ -96,7 +101,7 @@
           "sources": [{ "kind": "brief.constraint", "ref_id": "CON-DATA" }]
         },
         {
-          "statement": "The budget covers internal time as well as licences, which is tight for an option of this scope.",
+          "statement": "The stated budget is about 150,000 EUR for the first year and covers internal time as well as licences. No cost estimate exists for this initiative, so the two have not been compared.",
           "sources": [{ "kind": "brief.constraint", "ref_id": "CON-BUDGET" }]
         }
       ],

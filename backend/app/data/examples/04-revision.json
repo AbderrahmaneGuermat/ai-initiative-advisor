@@ -1,6 +1,6 @@
 {
   "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Not a recorded model response. No model has run in this project.",
-  "_shows": "The budget is cut from about 150,000 to 60,000 EUR. One initiative moves, two hold. Reporting what held is as important as reporting what moved: without it, a revision implies wholesale reconsideration when one thing shifted, and hides the case where a constraint changed and the advice did not.",
+  "_shows": "The budget is cut from about 150,000 to 60,000 EUR. One initiative moves, two hold. Reporting what held is as important as reporting what moved. Note what the revision does NOT claim: no cost estimate exists for any option, so the smaller budget cannot establish that anything is now unaffordable. The stance change is expressed as increased uncertainty about fit, not as a verdict of infeasibility.",
 
   "previous_context_id": "CTX-LARKFIELD-1",
   "current_context_id": "CTX-LARKFIELD-2",
@@ -18,7 +18,7 @@
       "initiative_id": "INI-ROUTE",
       "previous_stance": "consider_later",
       "current_stance": "not_recommended",
-      "reason": "At 150,000 this was a reasonable second step pending the data question. At 60,000, covering internal time as well as licences, it cannot be done properly in a company with no prior AI project and no named owner. A half-funded route tool that dispatchers stop trusting is worse than no route tool, because it also spends the organisation's appetite for the next attempt. This is a change of stance, not of assessment: the reasoning about its value has not changed, only what is affordable."
+      "reason": "This moves from a second step to one that should not be started yet, and the reason is narrower than it might look. Nobody has estimated what this initiative costs, so the smaller budget does not establish that it is unaffordable; it establishes that the gap between a known budget and an unknown cost is now much less forgiving. Starting an option of unknown cost against a reduced budget, in a company with no prior AI project and no named owner, risks stopping partway. The assessment of its value has not changed. What changed is how much room there is to be wrong about the cost."
     }
   ],
 
@@ -27,7 +27,7 @@
       "initiative_id": "INI-DOCS",
       "previous_stance": "recommended",
       "current_stance": "recommended",
-      "reason": "Unchanged, and the cut strengthens rather than weakens the case. This was recommended for being narrow, checkable and quick, which is exactly what a smaller budget calls for. The first action, sampling fifty documents, costs about a day of one clerk's time and is unaffected."
+      "reason": "Unchanged. This was recommended for being narrow, checkable and quick, which a smaller budget favours. Its cost has not been estimated either, so it is not being called affordable; what can be said is that its first action, sampling fifty documents, costs about a day of one clerk's time and is unaffected by the change."
     },
     {
       "initiative_id": "INI-CHAT",
@@ -37,7 +37,7 @@
     }
   ],
 
-  "explanation": "One constraint changed and one recommendation moved. Route optimisation drops from a second step to not recommended at this budget, because the amount that made it viable was the amount that has gone. Document extraction holds, and the case for it is stronger under the smaller budget than it was under the larger one. The chatbot is unaffected because its problem was never money. Every unknown carried into this revision is still open: a budget cut resolves nothing that was unknown before it, and in particular the skipped question about historical data is still the thing that would change the ordering if it were answered.",
+  "explanation": "One constraint changed and one stance moved. Route optimisation drops to not recommended for now, on the grounds that its cost is unknown and the margin for being wrong about it has shrunk, not on the grounds that it has been shown to be unaffordable. That distinction matters: no cost estimate exists for any of these options, so the budget alone cannot settle what fits. Document extraction holds. The chatbot is unaffected because its problem was never money. Every unknown carried into this revision is still open, and the budget cut has added one worth naming: the gap between a stated budget and unestimated costs is now the largest single source of uncertainty in this advice.",
 
   "open_unknowns": [
     "Whether historical delivery and traffic data exists. Still skipped, and still the answer that would most change this advice.",
@@ -45,7 +45,8 @@
     "The headcount available, still named as a constraint without a value.",
     "The current error rate on manually keyed documents.",
     "What the customer service chatbot would actually do.",
-    "Whether the reduced budget is itself confirmed in writing, given that the original was not."
+    "Whether the reduced budget is itself confirmed in writing, given that the original was not.",
+    "What any of these initiatives would cost. This is now the most consequential unknown: without estimates, the reduced budget cannot be compared against anything, and no option can honestly be called affordable or unaffordable."
   ],
 
   "cross_cutting_notes": [

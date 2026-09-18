@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **skeleton implemented. Advisory logic, runtime prompts and model calls not started.**
+Status: **first advisory flow working.** OpenAI integration, runtime prompts, the bounded loop and the validation boundary are implemented and tested against deterministic doubles. Revision is validated but not offered; persistence, exports and offline replay are not implemented.
 Revised following the design review in [prompts/002-design-review-and-skeleton.md](prompts/002-design-review-and-skeleton.md).
 
 The organising constraint is BlueCallom's stated hierarchy, that the prompt carries the
@@ -154,11 +154,12 @@ Implemented parts are marked. Everything else is planned.
 │   │   ├── config.py                  ✅  env loading, no secrets in code
 │   │   ├── api/routes.py              ✅  health only so far
 │   │   ├── core/
-│   │   │   ├── advisory_loop.py       ⬜  chooses nothing; runs what the prompt chose
-│   │   │   ├── prompt_loader.py       ⬜  reads prompts/, parses front matter
-│   │   │   ├── model_client.py        ⬜  provider interface + fixture mode
-│   │   │   ├── guards.py              ⬜  limits, action contract, transitions
-│   │   │   └── validation.py          ⬜  schema parse + single repair pass
+│   │   │   ├── advisory.py            ✅  bounded loop; runs what the prompt chose
+│   │   │   ├── assemble.py            ✅  builds inputs; fences manager text
+│   │   │   ├── prompt_loader.py       ✅  reads prompts/ per call, hashes contents
+│   │   │   ├── model_client.py        ✅  OpenAI adapter, named failures
+│   │   │   ├── limits.py              ✅  action, request, size and time ceilings
+│   │   │   └── validation.py          ✅  the single boundary before state
 │   │   ├── models/                    ✅  declared contracts, tested
 │   │   │   ├── common.py              ✅  identifiers, source references, strict base
 │   │   │   ├── brief.py               ✅  objectives, constraints, initiatives
@@ -171,7 +172,7 @@ Implemented parts are marked. Everything else is planned.
 │   │   ├── store/session.py           ⬜  append-only session history
 │   │   ├── export/render.py           ⬜  Markdown / JSON brief
 │   │   └── data/scenarios/            ⬜  fictional sample scenarios
-│   ├── prompts/                       ⬜  RUNTIME prompts: the product's intelligence
+│   ├── prompts/                       ✅  RUNTIME prompts: the product's intelligence
 │   ├── fixtures/                      ⬜  recorded responses, labelled as sample data
 │   ├── tests/                         ⬜
 │   └── requirements.txt               ✅

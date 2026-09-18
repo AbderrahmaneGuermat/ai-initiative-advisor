@@ -24,7 +24,7 @@
     {
       "initiative_id": "INI-ROUTE",
       "stance": "consider_later",
-      "rationale": "This addresses the objective the board actually cares about, and it is the more valuable of the two well-specified options. It is second because the question that determines its size, whether usable historical data exists, was asked and skipped. Committing to it now would mean guessing at that answer, and the guess would decide whether this is a three-month project or a year-long one.",
+      "rationale": "This addresses the objective the board actually cares about. It is second because two things that would size it are unknown: whether usable historical data exists, which was asked and skipped, and what it would cost, which nobody has estimated. Committing now would mean guessing at both.",
       "supported_by": [
         { "kind": "brief.objective", "ref_id": "OBJ-LATE" },
         { "kind": "brief.constraint", "ref_id": "CON-BUDGET" }
@@ -88,7 +88,8 @@
     "Who would own any of this day to day after launch. Asked as Q-TEAM and not yet answered.",
     "The headcount available, which the brief names as a constraint without a value.",
     "The current error rate on manually keyed documents.",
-    "What the customer service chatbot would actually do."
+    "What the customer service chatbot would actually do.",
+    "What any of these initiatives would cost. The budget is stated; no cost estimate exists for any option, so no option has been shown to fit or not fit it."
   ],
 
   "confidence_note": "Moderate for the choice of first step, low for the ordering behind it. The case for starting with document extraction rests on a volume figure the manager gave directly and on a deadline that is hard to argue with, so it is reasonably firm. The case for placing route optimisation second rather than first rests on an unknown that was skipped rather than resolved: if usable history turns out to exist, that ordering is the wrong way round and should be revisited rather than defended."
