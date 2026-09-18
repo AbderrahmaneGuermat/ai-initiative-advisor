@@ -133,3 +133,84 @@ This entry is written in two parts, because the instruction asked for two separa
 2. Five decisions remain open: model provider, session persistence, export formats, test depth and
    streaming. Only the provider was explicitly deferred by the project owner; the other four carry
    recommendations awaiting a decision.
+
+### Part B — skeleton implementation
+
+Built, per the instruction, the structure and nothing more.
+
+1. **Root tooling.** `package.json` declaring `frontend` as an npm workspace, so one `npm install`
+   covers both. `npm run dev` runs `concurrently` over the two processes.
+2. **`scripts/dev-backend.mjs`.** Locates the virtual environment interpreter at
+   `backend/.venv/Scripts/python.exe` or `backend/.venv/bin/python` and starts Uvicorn. Written
+   because `npm run dev` should not require the developer to activate a virtual environment first,
+   and the interpreter path differs per platform. If no environment is found it prints the exact
+   setup commands and exits non-zero.
+3. **Backend.** `app/main.py` mounting the router under `/api`, `app/config.py` reading settings
+   from the environment, and `app/api/routes.py` with `GET /api/health`. Empty `prompts/`,
+   `fixtures/` and `tests/` directories are kept with placeholder files.
+4. **Health endpoint honesty.** The response carries the build stage plus explicit `implemented`
+   and `not_implemented` lists, so anyone calling the API can see how much of the application is
+   real rather than inferring capability from a bare `"ok"`.
+5. **Frontend.** Vite, React and TypeScript. A shell rendering the three proposed regions, a
+   permanent "Unfinished prototype" banner, and a backend status indicator. Every region is a
+   labelled placeholder marked "not implemented". No invented content that could be mistaken for
+   generated advice appears anywhere.
+6. **`.env.example`** with placeholders only. No credential, real or plausible.
+7. **Configuration.** The model provider is unset by default. Nothing in this build reads a key or
+   calls a model. The health endpoint reports whether a provider is configured as a boolean; the
+   key itself is never returned, logged or sent to the frontend.
+8. **Ignore rules** confirmed to cover `.env`, both dependency directories, the virtual
+   environment and the build output.
+
+### Checks performed, Part B
+
+Everything below was actually executed in this session on Windows 11, Node 24.17.0, npm 11.13.0,
+Python 3.14.5.
+
+| Check | Result |
+|---|---|
+| `python -m venv backend/.venv` and pip install of `backend/requirements.txt` | Succeeded. FastAPI 0.141.1, Pydantic 2.13.5, pydantic-settings 2.15.0, Uvicorn 0.53.0, PyYAML 6.0.3 |
+| `npm install` at the repository root | Succeeded, 96 packages, frontend workspace included |
+| `npm run check:frontend` (`tsc --noEmit`) | Passed with no errors |
+| `from app.main import app` | Imported without error |
+| `npm run dev` | Both processes started. Uvicorn on 127.0.0.1:8000, Vite on port 5173 |
+| `GET http://127.0.0.1:8000/api/health` | HTTP 200 with the expected JSON body |
+| `GET http://localhost:5173/api/health` through the Vite proxy | HTTP 200, identical body. Frontend-to-backend path confirmed |
+| Every frontend module and stylesheet requested from the dev server | All 13 returned HTTP 200, so nothing fails to transform |
+| `npm run build` | Succeeded. 36 modules transformed |
+| Documented Windows PowerShell setup commands, run verbatim | pip install and `Copy-Item .env.example .env` both worked |
+| `git check-ignore` on `.env`, `node_modules`, `backend/.venv`, `frontend/dist` | All ignored |
+| Files staged for commit | Reviewed. 29 files, no dependency directories, no build output, no `.env` |
+| Both dev processes stopped afterwards | Confirmed. No listener remains on either port |
+
+### Not verified
+
+1. **Rendered interface in a browser.** No browser automation is available in this environment. I
+   confirmed that the page is served, that every module transforms, that the type check and the
+   production build pass, and that the health request succeeds through the proxy. I did **not**
+   observe the rendered DOM, so the visual layout and the status indicator's on-screen appearance
+   remain unconfirmed. The project owner should open <http://localhost:5173> and check.
+2. **macOS and Linux.** Only the Windows branch of `scripts/dev-backend.mjs` was exercised. The
+   POSIX branch is written but untested.
+3. **The error path of the startup script.** The message shown when no virtual environment exists
+   was not triggered, because the environment was created first.
+4. **Everything related to advice.** No model call, prompt, comparison or recommendation exists to
+   test. Nothing in this build produces advisory output of any kind.
+
+### Observations
+
+1. **Vite binds to the IPv6 loopback only.** `http://127.0.0.1:5173` refuses the connection while
+   `http://localhost:5173` works. Confirmed with `netstat`, which shows the listener on `[::1]`.
+   Documented in the README rather than worked around, since the backend listens on IPv4 and the
+   proxy functions correctly either way.
+2. **Python 3.14.5 is newer than the documented floor of 3.11.** All dependencies installed and
+   ran without issue, but only 3.14.5 has actually been exercised.
+3. A transcription error was introduced and corrected while editing the README: a Windows path in
+   the setup block briefly lost a backslash to an escape-sequence mistake. Caught by re-reading the
+   file, fixed, and the corrected commands were then executed verbatim to confirm they work.
+
+### Status at end of entry
+
+Documentation corrected and committed. Skeleton implemented, running and committed separately. No
+remote configured and nothing pushed, as instructed. Awaiting review before the advisory loop,
+runtime prompts and model integration are built.

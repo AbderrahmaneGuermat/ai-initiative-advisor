@@ -124,6 +124,7 @@ Implemented parts are marked. Everything else is planned.
 ├── .env.example                       ✅  placeholders only
 ├── .gitignore                         ✅
 ├── package.json                       ✅  root: npm run dev
+├── scripts/dev-backend.mjs            ✅  finds the venv interpreter per platform
 ├── docs/                              ✅
 │   ├── requirements.md · architecture.md · decisions.md · worklog.md
 │   ├── ui-ux.md                       ⬜  written alongside the interface

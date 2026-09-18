@@ -26,17 +26,24 @@ implying otherwise. The Git history shows exactly when it was written.
 
 ## Current status
 
-**Design corrected and agreed in outline. Project skeleton not yet implemented.**
+**Skeleton stage.** The project structure, the startup command and a backend health endpoint
+work. **No advisory behaviour exists.** No AI model is connected, no prompt is executed, and no
+recommendation is produced. The interface is a layout shell that labels itself as an unfinished
+prototype and marks every region as not implemented.
 
-Completed:
+| Capability | State |
+|---|---|
+| Repository, documentation, development prompt record | Working |
+| One-command startup, `npm run dev` | Working, verified |
+| Backend health endpoint | Working, verified |
+| Frontend shell and layout regions | Working, placeholders only |
+| Frontend to backend connection | Working, verified through the dev proxy |
+| Model calls, runtime prompts, advisory loop | **Not implemented** |
+| Comparison, recommendation, revision | **Not implemented** |
+| Sample scenarios, export, tests | **Not implemented** |
 
-- Repository initialised, documentation structure created.
-- BlueCallom's published Intelligence-over-Code page reviewed and re-verified, with its stated
-  positions separated from our own interpretation.
-- Requirements, architecture and decisions documented, then revised after design review.
-
-Not started: backend application logic, runtime prompts, model integration, comparison output,
-demonstration scenarios, tests, and the UI/UX rationale document.
+Five decisions remain open, including the model provider, which is deliberately deferred until
+API access is confirmed. See [docs/requirements.md](docs/requirements.md), section D-b.
 
 ---
 
@@ -83,25 +90,98 @@ made. The second is the product.
 
 ---
 
-## Planned local execution
+## Setup and local execution
 
-Not yet available. Described here so the plan can be reviewed.
+Verified on Windows 11 with Node 24.17.0, npm 11.13.0 and Python 3.14.5.
 
 **Prerequisites:** Node.js 20 or later, Python 3.11 or later, Git.
 
-After a one-time setup, a single command from the repository root will start both processes:
+### First-time setup
 
+Run these once, from the repository root.
+
+**Windows (PowerShell):**
+
+```powershell
+npm install
+
+python -m venv backend\.venv
+backend\.venv\Scripts\python.exe -m pip install --upgrade pip
+backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+
+Copy-Item .env.example .env
 ```
+
+**macOS and Linux:**
+
+```bash
+npm install
+
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install --upgrade pip
+backend/.venv/bin/python -m pip install -r backend/requirements.txt
+
+cp .env.example .env
+```
+
+You do not need to activate the virtual environment. The startup script finds the interpreter
+inside `backend/.venv` on either platform, and tells you what to run if it is missing.
+
+`npm install` also installs the frontend packages, because `frontend` is an npm workspace of the
+root project.
+
+### Starting the application
+
+One command, from the repository root:
+
+```bash
 npm run dev
 ```
 
-Credentials will live in a git-ignored `.env`. A committed `.env.example` will list every
-variable as a placeholder, with no real values.
+This starts the FastAPI backend on port 8000 and the Vite dev server on port 5173, and stops both
+if either fails.
 
-**Running without a key.** The application will support an offline mode that replays recorded
-fixture responses, so the interface and the advisory flow can be reviewed without credentials.
-Fixture output is labelled as sample data in the interface, and a failed live model call is never
-silently replaced by a fixture.
+Then open **<http://localhost:5173>**.
+
+Use `localhost`, not `127.0.0.1`. Vite binds to the IPv6 loopback address by default, so
+`http://127.0.0.1:5173` will refuse the connection while `http://localhost:5173` works. The
+backend itself listens on IPv4 and answers on both `http://127.0.0.1:8000` and
+`http://localhost:8000`.
+
+### Checking it works
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+The response states the build stage and lists which capabilities exist, so it is obvious how much
+of the application is real:
+
+```json
+{
+  "status": "ok",
+  "stage": "skeleton",
+  "implemented": ["health"],
+  "not_implemented": ["model calls", "runtime prompts", "advisory loop", "..."]
+}
+```
+
+The interface shows the same thing as a status indicator in its header. Interactive API
+documentation is at <http://localhost:8000/docs>.
+
+### Credentials
+
+Secrets live in `.env` at the repository root, which is git-ignored. The committed
+`.env.example` contains placeholders only and no real values.
+
+**The current build reads no credentials and makes no model calls.** The model provider is
+deliberately unset until API access is confirmed, and the application starts and runs without a
+key.
+
+**Running without a key, later.** The application will support an offline mode that replays
+recorded fixture responses, so the interface and the advisory flow can be reviewed without
+credentials. Fixture output is labelled as sample data in the interface, and a failed live model
+call is never silently replaced by a fixture.
 
 **Demonstration data is fictional.** No employer data, no real operational data, no BlueCallom
 platform access.

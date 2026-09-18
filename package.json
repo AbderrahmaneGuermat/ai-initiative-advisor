@@ -1,0 +1,22 @@
+{
+  "name": "ai-initiative-advisor",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Strategy-consulting application for managers, built with BlueCallom's Intelligence-over-Code method. Skeleton stage.",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently --names backend,frontend --prefix-colors blue,magenta --kill-others-on-fail \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "node scripts/dev-backend.mjs",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace frontend",
+    "check:frontend": "npm run typecheck --workspace frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
