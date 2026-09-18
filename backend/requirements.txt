@@ -13,3 +13,11 @@ python-dotenv>=1.0,<2.0
 # Parses YAML front matter in runtime prompt files. Not used yet; the prompt
 # loader is not implemented.
 PyYAML>=6.0,<7.0
+
+
+# --- Development ------------------------------------------------------------
+# Test runner. Installed alongside the runtime dependencies rather than in a
+# separate file, because the project is small and a second requirements file
+# is one more thing a reviewer has to notice.
+
+pytest>=8.0,<9.0

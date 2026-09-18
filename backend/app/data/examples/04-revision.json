@@ -1,0 +1,57 @@
+{
+  "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Not a recorded model response. No model has run in this project.",
+  "_shows": "The budget is cut from about 150,000 to 60,000 EUR. One initiative moves, two hold. Reporting what held is as important as reporting what moved: without it, a revision implies wholesale reconsideration when one thing shifted, and hides the case where a constraint changed and the advice did not.",
+
+  "previous_context_id": "CTX-LARKFIELD-1",
+  "current_context_id": "CTX-LARKFIELD-2",
+
+  "triggered_by": [
+    {
+      "constraint_id": "CON-BUDGET",
+      "previous_value": "about 150,000 EUR for the first year, including internal time",
+      "current_value": "60,000 EUR for the first year, including internal time, after a company-wide freeze"
+    }
+  ],
+
+  "moved": [
+    {
+      "initiative_id": "INI-ROUTE",
+      "previous_stance": "consider_later",
+      "current_stance": "not_recommended",
+      "reason": "At 150,000 this was a reasonable second step pending the data question. At 60,000, covering internal time as well as licences, it cannot be done properly in a company with no prior AI project and no named owner. A half-funded route tool that dispatchers stop trusting is worse than no route tool, because it also spends the organisation's appetite for the next attempt. This is a change of stance, not of assessment: the reasoning about its value has not changed, only what is affordable."
+    }
+  ],
+
+  "held": [
+    {
+      "initiative_id": "INI-DOCS",
+      "previous_stance": "recommended",
+      "current_stance": "recommended",
+      "reason": "Unchanged, and the cut strengthens rather than weakens the case. This was recommended for being narrow, checkable and quick, which is exactly what a smaller budget calls for. The first action, sampling fifty documents, costs about a day of one clerk's time and is unaffected."
+    },
+    {
+      "initiative_id": "INI-CHAT",
+      "previous_stance": "insufficient_information",
+      "current_stance": "insufficient_information",
+      "reason": "Still undescribed. A budget change tells us nothing about an option nobody has specified, and it would be wrong to record this as rejected on cost when the real reason has not changed."
+    }
+  ],
+
+  "explanation": "One constraint changed and one recommendation moved. Route optimisation drops from a second step to not recommended at this budget, because the amount that made it viable was the amount that has gone. Document extraction holds, and the case for it is stronger under the smaller budget than it was under the larger one. The chatbot is unaffected because its problem was never money. Every unknown carried into this revision is still open: a budget cut resolves nothing that was unknown before it, and in particular the skipped question about historical data is still the thing that would change the ordering if it were answered.",
+
+  "open_unknowns": [
+    "Whether historical delivery and traffic data exists. Still skipped, and still the answer that would most change this advice.",
+    "Who would own the work day to day after launch. Still unanswered.",
+    "The headcount available, still named as a constraint without a value.",
+    "The current error rate on manually keyed documents.",
+    "What the customer service chatbot would actually do.",
+    "Whether the reduced budget is itself confirmed in writing, given that the original was not."
+  ],
+
+  "cross_cutting_notes": [
+    {
+      "statement": "Two budget figures have now been given and neither has been seen in writing. That pattern is worth raising with the manager directly, because it affects whether any recommendation here can be acted on.",
+      "sources": [{ "kind": "brief.constraint", "ref_id": "CON-BUDGET" }]
+    }
+  ]
+}

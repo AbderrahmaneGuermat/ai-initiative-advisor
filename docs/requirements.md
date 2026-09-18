@@ -175,7 +175,15 @@ A comparison presents each initiative through five distinct, separately labelled
 | **Trade-offs** | What is given up by choosing this option over the alternatives |
 
 The recommendation must be traceable to these categories. A justification that cites an assumption
-must say so.
+must say so. Claims resting on the manager's input carry a lightweight reference to the brief field
+or clarification answer they came from.
+
+**What this does and does not establish.** Separate fields and resolvable references make the
+advice auditable: a reader can see which category a claim was filed under and which input it points
+at. They do not make it correct. A schema cannot detect a statement filed as a stated fact that is
+really an assumption, and a reference check confirms only that the identifier exists, not that the
+cited input supports the claim. Traceability makes a wrong claim findable. It does not prevent one.
+See decision D-016.
 
 **An unknown is never converted into a zero, a low score, or a neutral midpoint.** Silence about
 data quality is not evidence of poor data quality. Unknowns propagate into the output as unknowns.

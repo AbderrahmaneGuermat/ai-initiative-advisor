@@ -55,8 +55,8 @@ or silently flattered. A manager cannot audit that, because the arithmetic hides
 of every input.
 
 The five-category structure keeps provenance visible instead: a recommendation resting on an
-assumption has to say so. Each category is a distinct schema field, so a label cannot be lost in
-transit.
+assumption has to say so, in its own field. That is a structural guarantee about where a claim is
+written down, not a guarantee that it was categorised honestly or that it is true. See D-016.
 
 **Rejected:** Weighted scoring in the MVP. If it returns later, it arrives with documented scales,
 documented weights and a written statement of its limitations, never implicitly.
@@ -162,9 +162,10 @@ SDK ecosystem for model providers is the most mature.
 separate document that drifts. Guards and validation are pure functions, unit testable with no
 model and no network.
 
-**Rejected:** A single Next.js application with API routes. It removes a process and a port, which
-is genuinely tempting, but it moves prompt handling and schema validation into TypeScript and
-blurs exactly the boundary this assessment examines.
+**Alternative considered:** A single Next.js application with API routes, which would remove a
+process and a port. We preferred the split for Pydantic's declarative validation and for the
+project owner's familiarity with Python at that layer. See D-018 for the corrected reasoning; the
+earlier claim that this choice was about protecting the method has been withdrawn.
 
 ---
 
@@ -264,6 +265,104 @@ defined as an interface with adapters behind it.
 **Why:** Directed by the project owner. The decision affects one module. Deferring it blocks
 nothing in the skeleton, the guards, the schemas or the interface, and committing early to a
 provider we may not have credentials for would be the more expensive mistake.
+
+---
+
+## D-015 — Local addresses are fixed, not configurable
+
+**Status:** Confirmed · 2026-09-18
+
+The backend binds `127.0.0.1:8000` in `scripts/dev-backend.mjs`. The dev server serves port 5173
+and proxies to that address, set in `frontend/vite.config.ts`. `BACKEND_HOST` and `BACKEND_PORT`
+are removed from `.env.example` and from the settings object.
+
+**Why:** Those variables were advertised but never read. Nothing passed them to Uvicorn, so
+setting them would have changed nothing while appearing to change something. That is worse than
+no option at all, because it fails silently. For a local-only MVP, two fixed addresses in two
+named files are simpler than a configuration path nobody uses.
+
+**Rejected:** Wiring the variables through to the startup script. It would have made the
+documentation true, but it adds a configuration surface the project does not need yet. If
+deployment ever comes into scope this decision should be revisited, and at that point the values
+should be read in one place rather than two.
+
+---
+
+## D-016 — What schema validation and reference checks actually establish
+
+**Status:** Confirmed · 2026-09-18 · **corrects an overclaim**
+
+Structural validation and referential checks are traceability mechanisms. They are not correctness
+mechanisms, and no document in this repository may describe them as though they were.
+
+**What they do establish.** That a payload has the declared shape. That a claim was filed under
+exactly one of the five categories. That an identifier a claim points at exists in the brief or in
+a clarification answer. That an action named by a prompt is one the application permits. That the
+count of clarification questions in a batch is within its limit.
+
+**What they do not establish.** That a statement filed under stated facts is true. That something
+filed as a fact is not actually an assumption. That a cited input supports the claim citing it.
+That the comparison is complete, balanced or relevant.
+
+**Why the distinction matters here.** An earlier revision of the architecture said that separate
+schema fields mean "an assumption cannot arrive labelled as a fact." That is false. A model can
+put anything in any field, and the schema will accept it as long as the shape is right. The honest
+claim is narrower and still worth having: **traceability makes a wrong claim findable, cheaply and
+by a reader who is not the author.** It does not prevent one.
+
+**Consequence for the code.** Validators check structure and referential integrity only. They
+contain no rule about what makes a good initiative, no keyword heuristics, and no attempt to judge
+whether a claim belongs where it was put. Semantic quality is the prompts' responsibility and the
+reviewing manager's, not the schema's.
+
+---
+
+## D-017 — `diagnose` is a permitted action, and every action declares its output contract
+
+**Status:** Confirmed · 2026-09-18
+
+The permitted action set gains `diagnose`. Each action is bound to the contract its output must
+satisfy, declared once in `backend/app/models/actions.py` as `ACTION_OUTPUT_CONTRACTS` and
+documented in [architecture.md](architecture.md), section 2.
+
+**Why:** The two lists had drifted. The architecture described a `diagnose.md` prompt while the
+permitted actions were `request_context`, `ask_clarification`, `compare`, `recommend`, `revise`
+and `await_user`. Since a prompt can only run when the next-action step names it, the diagnosis
+prompt was unreachable. Diagnosis is one of the five advisory responsibilities the brief asks for
+and it appears in the interface, so the action set was wrong, not the prompt list.
+
+Binding actions to output contracts in one place is the fix for the underlying problem rather than
+the symptom. A new action cannot be added without declaring what its output must look like, and
+the pairing is checked by a test.
+
+**Note:** `await_user` has no prompt. It ends the turn and returns control, so there is no model
+output to validate. It is mapped to a contract carrying only a reason, to keep the mapping total.
+
+---
+
+## D-018 — Stack chosen on suitability and familiarity, not on methodological necessity
+
+**Status:** Confirmed · 2026-09-18 · **corrects D-007 and an overclaim in the architecture**
+
+Python with FastAPI for the backend, React with Vite and TypeScript for the interface, as two
+processes.
+
+**Why, honestly stated.** Pydantic gives the strongest declarative validation of the options we
+considered, and parsing model output is the code this application depends on most. The project
+owner is more productive in Python at that layer. Keeping the backend separate puts the runtime
+prompt files next to the code that loads them, which suits how we intend to review them. React
+suits an interface of several coordinated panels over one evolving object.
+
+**What we withdraw.** Earlier revisions said that a single Next.js application would "blur the
+boundary between interface and intelligence," and that TypeScript's validation story made it
+unsuitable for this method. Both claims are withdrawn. Where business judgement lives is a
+question of how an application is organised, not of which language or framework carries the
+transport layer. The same prompt-first separation is achievable in a single TypeScript project,
+and a team more fluent in that stack should build it there.
+
+This is the third correction in the same family, after D-006a. The pattern is worth naming: it is
+tempting to dress a preference up as a methodological requirement, because that sounds more
+rigorous than saying we are faster in Python. It is not more rigorous. It is just less true.
 
 ---
 

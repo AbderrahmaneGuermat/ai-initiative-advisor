@@ -18,8 +18,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # The stage this build is at. Reported by the health endpoint so that anyone
 # calling the API can tell how much of the application actually exists.
-BUILD_STAGE = "skeleton"
-APP_VERSION = "0.0.1"
+BUILD_STAGE = "data-contracts"
+APP_VERSION = "0.0.2"
 
 
 class Settings(BaseSettings):
@@ -32,8 +32,10 @@ class Settings(BaseSettings):
     )
 
     # --- Server -----------------------------------------------------------
-    backend_host: str = "127.0.0.1"
-    backend_port: int = 8000
+    # The local addresses are fixed for this MVP, not configurable. The backend
+    # binds 127.0.0.1:8000 in scripts/dev-backend.mjs and the dev server serves
+    # 5173 in frontend/vite.config.ts. No host or port setting is declared here,
+    # because nothing would read one. See docs/decisions.md, D-015.
 
     # Origins allowed to call the API directly. In normal development the Vite
     # dev server proxies /api, so no browser request is cross-origin and this

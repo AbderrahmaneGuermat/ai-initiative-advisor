@@ -1,0 +1,155 @@
+{
+  "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Not a recorded model response. No model has run in this project.",
+  "_shows": "Three initiatives across the five categories. Note what happens to the question the manager skipped: it does not become a low rating for INI-ROUTE, it becomes an entry under missing_evidence. Claims that rest on the manager's input cite it; assumptions carry no sources, which is the signal that they are assumptions.",
+
+  "context_id": "CTX-LARKFIELD-1",
+
+  "criteria_considered": [
+    "Time to something demonstrable before the November board review",
+    "Dependence on data the company already holds",
+    "Whether the result can be checked by the people who do the work today",
+    "Exposure to the EU data residency constraint",
+    "Ownership burden after launch"
+  ],
+
+  "initiatives": [
+    {
+      "initiative_id": "INI-DOCS",
+      "stated_facts": [
+        {
+          "statement": "Clerks process around 400 customs documents a week across two depots, at six to ten minutes each.",
+          "sources": [{ "kind": "clarification.answer", "ref_id": "Q-VOLUME" }]
+        },
+        {
+          "statement": "The manager is targeting administrative cost per shipment.",
+          "sources": [{ "kind": "brief.objective", "ref_id": "OBJ-COST" }]
+        }
+      ],
+      "assumptions": [
+        {
+          "statement": "The documents are broadly similar in layout, which is typical for customs paperwork on a regional network but has not been confirmed here.",
+          "sources": []
+        },
+        {
+          "statement": "Clerks would accept a check-and-correct workflow rather than experiencing it as surveillance. No one has asked them.",
+          "sources": []
+        }
+      ],
+      "missing_evidence": [
+        {
+          "description": "The current error rate on manually keyed documents.",
+          "why_it_matters": "Without it there is no baseline, so any claimed improvement after launch will be arguable rather than demonstrable.",
+          "how_it_could_be_resolved": "Sample fifty recent documents against their downstream records. A day of work for one clerk."
+        }
+      ],
+      "feasibility_constraints": [
+        {
+          "statement": "Processing must keep customer address data inside the EU, which rules out several hosted extraction services.",
+          "sources": [{ "kind": "brief.constraint", "ref_id": "CON-DATA" }]
+        },
+        {
+          "statement": "Must produce something demonstrable before the November board review.",
+          "sources": [{ "kind": "brief.constraint", "ref_id": "CON-DEADLINE" }]
+        }
+      ],
+      "trade_offs": [
+        {
+          "statement": "The narrowest of the three options. It will not move the late delivery objective at all.",
+          "sources": [{ "kind": "brief.objective", "ref_id": "OBJ-LATE" }]
+        }
+      ]
+    },
+
+    {
+      "initiative_id": "INI-ROUTE",
+      "stated_facts": [
+        {
+          "statement": "Late deliveries have been raised by two large retail customers, and one has hinted at retendering.",
+          "sources": [{ "kind": "brief.objective", "ref_id": "OBJ-LATE" }]
+        },
+        {
+          "statement": "The manager believes this option serves both the late delivery and the cost objective.",
+          "sources": [{ "kind": "brief.initiative", "ref_id": "INI-ROUTE" }]
+        }
+      ],
+      "assumptions": [
+        {
+          "statement": "Dispatchers currently plan routes by experience rather than by a tool, which is usual at this fleet size but was not stated.",
+          "sources": []
+        }
+      ],
+      "missing_evidence": [
+        {
+          "description": "Whether historical delivery and traffic data exists, and how far back it goes.",
+          "why_it_matters": "This is the single largest determinant of whether route optimisation is a three-month project or a year-long one. It was asked and the manager chose to skip it, so it remains unknown rather than assumed either way.",
+          "how_it_could_be_resolved": "Ask the transport management system administrator what is retained and for how long."
+        },
+        {
+          "description": "Whether dispatchers would follow suggested adjustments.",
+          "why_it_matters": "A route tool that dispatchers override produces no benefit while still costing its full price.",
+          "how_it_could_be_resolved": "Two hours with three dispatchers, before committing to anything."
+        }
+      ],
+      "feasibility_constraints": [
+        {
+          "statement": "Address data must remain in the EU, which constrains routing service selection.",
+          "sources": [{ "kind": "brief.constraint", "ref_id": "CON-DATA" }]
+        },
+        {
+          "statement": "The budget covers internal time as well as licences, which is tight for an option of this scope.",
+          "sources": [{ "kind": "brief.constraint", "ref_id": "CON-BUDGET" }]
+        }
+      ],
+      "trade_offs": [
+        {
+          "statement": "Addresses the objective the board actually cares about, but is the least likely of the three to show anything by November.",
+          "sources": [
+            { "kind": "brief.objective", "ref_id": "OBJ-LATE" },
+            { "kind": "brief.constraint", "ref_id": "CON-DEADLINE" }
+          ]
+        }
+      ]
+    },
+
+    {
+      "initiative_id": "INI-CHAT",
+      "stated_facts": [
+        {
+          "statement": "The manager listed this against the administrative cost objective.",
+          "sources": [{ "kind": "brief.initiative", "ref_id": "INI-CHAT" }]
+        }
+      ],
+      "assumptions": [],
+      "missing_evidence": [
+        {
+          "description": "What this initiative would actually do. The brief gives it a name and no description.",
+          "why_it_matters": "Nothing useful can be said about an option that has not been described. Comparing it on the strength of its title would be inventing the option and then assessing the invention.",
+          "how_it_could_be_resolved": "Ask the manager what problem they had in mind, and who the chatbot would be for."
+        },
+        {
+          "description": "Current customer contact volume and the nature of those contacts.",
+          "why_it_matters": "Determines whether there is any cost to remove.",
+          "how_it_could_be_resolved": "Pull three months of contact records from the service desk."
+        }
+      ],
+      "feasibility_constraints": [
+        {
+          "statement": "Customer conversations would involve address data, which is subject to the EU residency constraint.",
+          "sources": [{ "kind": "brief.constraint", "ref_id": "CON-DATA" }]
+        }
+      ],
+      "trade_offs": []
+    }
+  ],
+
+  "cross_cutting_notes": [
+    {
+      "statement": "Nobody in the company has run an AI project before, which argues for the option that fails most cheaply rather than the one with the largest projected benefit.",
+      "sources": []
+    },
+    {
+      "statement": "The headcount constraint is named but has no value, and the question about who would own the work after launch is still unanswered. Every option below is affected by this and none of them can be sized properly until it is resolved.",
+      "sources": [{ "kind": "brief.constraint", "ref_id": "CON-TEAM" }]
+    }
+  ]
+}

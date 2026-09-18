@@ -26,24 +26,35 @@ implying otherwise. The Git history shows exactly when it was written.
 
 ## Current status
 
-**Skeleton stage.** The project structure, the startup command and a backend health endpoint
-work. **No advisory behaviour exists.** No AI model is connected, no prompt is executed, and no
-recommendation is produced. The interface is a layout shell that labels itself as an unfinished
-prototype and marks every region as not implemented.
+**Data contracts stage.** The project runs, and the contracts that the advisory exchange will use
+are written and tested. **No advisory behaviour exists.** No AI model is connected, no prompt is
+executed, and nothing in the application can produce a comparison or a recommendation. The
+interface is a layout shell that labels itself an unfinished prototype.
+
+The distinction that matters throughout this repository is between a capability that **works** and
+one that is **specified**. Specified means written down in the documentation and, where relevant,
+given a data contract. It does not mean it does anything.
 
 | Capability | State |
 |---|---|
-| Repository, documentation, development prompt record | Working |
-| One-command startup, `npm run dev` | Working, verified |
-| Backend health endpoint | Working, verified |
-| Frontend shell and layout regions | Working, placeholders only |
-| Frontend to backend connection | Working, verified through the dev proxy |
-| Model calls, runtime prompts, advisory loop | **Not implemented** |
-| Comparison, recommendation, revision | **Not implemented** |
-| Sample scenarios, export, tests | **Not implemented** |
+| Repository, documentation, development prompt record | **Works** |
+| One-command startup, `npm run dev` | **Works**, verified |
+| Backend health endpoint, reporting its own build stage | **Works**, verified |
+| Frontend shell and layout regions | **Works**, placeholders only |
+| Frontend to backend connection | **Works**, verified through the dev proxy |
+| Data contracts for brief, clarification, comparison, recommendation, revision, next action | **Works**, 44 tests |
+| Reference resolution against the brief and answered questions | **Works**, tested |
+| One fictional worked example, validated against the contracts | **Works**, hand-authored, not model output |
+| Model calls, runtime prompts, advisory loop | **Specified only** |
+| Producing a comparison, recommendation or revision | **Specified only** |
+| Sessions, persistence, export, offline fixture replay | **Specified only** |
+| Interface beyond the layout shell | **Specified only** |
 
-Five decisions remain open, including the model provider, which is deliberately deferred until
-API access is confirmed. See [docs/requirements.md](docs/requirements.md), section D-b.
+Nothing in the application generates advice. The example payloads under `backend/app/data/` were
+written by hand to exercise the contracts, and are labelled as such wherever they appear.
+
+Four decisions remain open, including the model provider, which is deliberately deferred until API
+access is confirmed. See [docs/requirements.md](docs/requirements.md), section D-b.
 
 ---
 
@@ -143,10 +154,17 @@ if either fails.
 
 Then open **<http://localhost:5173>**.
 
-Use `localhost`, not `127.0.0.1`. Vite binds to the IPv6 loopback address by default, so
-`http://127.0.0.1:5173` will refuse the connection while `http://localhost:5173` works. The
-backend itself listens on IPv4 and answers on both `http://127.0.0.1:8000` and
-`http://localhost:8000`.
+Prefer `localhost` over `127.0.0.1` for the interface. On the Windows 11 machine this project was
+developed and tested on, the dev server bound only the IPv6 loopback, so `http://localhost:5173`
+worked while `http://127.0.0.1:5173` refused the connection. That was observed on one machine and
+is not claimed as universal behaviour. The address the dev server prints on startup is the one to
+trust.
+
+The backend listens on IPv4 at the fixed address `127.0.0.1:8000` and answers on both
+`http://127.0.0.1:8000` and `http://localhost:8000`.
+
+**These addresses are not configurable.** They are set in `scripts/dev-backend.mjs` and
+`frontend/vite.config.ts`. Change both together if you need different ones.
 
 ### Checking it works
 
@@ -160,10 +178,17 @@ of the application is real:
 ```json
 {
   "status": "ok",
-  "stage": "skeleton",
-  "implemented": ["health"],
+  "stage": "data-contracts",
+  "implemented": ["health", "data contracts", "contract validation", "reference resolution"],
   "not_implemented": ["model calls", "runtime prompts", "advisory loop", "..."]
 }
+```
+
+To run the contract tests:
+
+```bash
+backend\.venv\Scripts\python.exe -m pytest backend      # Windows
+backend/.venv/bin/python -m pytest backend                # macOS, Linux
 ```
 
 The interface shows the same thing as a status indicator in its header. Interactive API

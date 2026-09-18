@@ -1,0 +1,48 @@
+{
+  "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Not a recorded model response. No model has run in this project.",
+  "_shows": "Three questions, the maximum a single batch permits. One answered, one explicitly skipped by the manager, one still untouched. All three remain present in the payload; the skipped and unanswered ones are open unknowns and must be carried into any later advice.",
+
+  "batch": {
+    "questions": [
+      {
+        "id": "Q-VOLUME",
+        "question": "Roughly how many customs documents do clerks process in a week, and how long does one take?",
+        "why_it_matters": "Document extraction is only worth doing if the volume is high enough to repay the setup. Below a few hundred a week the manual process is usually cheaper.",
+        "relates_to": [
+          { "kind": "brief.initiative", "ref_id": "INI-DOCS" },
+          { "kind": "brief.objective", "ref_id": "OBJ-COST" }
+        ]
+      },
+      {
+        "id": "Q-DATA",
+        "question": "Is historical delivery and traffic data already collected, and for how long back?",
+        "why_it_matters": "Route optimisation needs history to be useful. Without it the first months produce suggestions no dispatcher will trust.",
+        "relates_to": [{ "kind": "brief.initiative", "ref_id": "INI-ROUTE" }]
+      },
+      {
+        "id": "Q-TEAM",
+        "question": "Who inside the company would own this day to day once it is running?",
+        "why_it_matters": "The headcount constraint is named but not quantified, and every option here needs someone to own it after launch.",
+        "relates_to": [{ "kind": "brief.constraint", "ref_id": "CON-TEAM" }]
+      }
+    ]
+  },
+
+  "responses": [
+    {
+      "question_id": "Q-VOLUME",
+      "status": "answered",
+      "answer": "Around 400 a week across two depots. A clerk spends somewhere between six and ten minutes on each one, more when the scan is poor."
+    },
+    {
+      "question_id": "Q-DATA",
+      "status": "skipped",
+      "answer": null
+    },
+    {
+      "question_id": "Q-TEAM",
+      "status": "unanswered",
+      "answer": null
+    }
+  ]
+}

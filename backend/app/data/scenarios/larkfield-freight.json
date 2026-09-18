@@ -1,0 +1,69 @@
+{
+  "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Larkfield Regional Freight does not exist. This brief was authored manually to exercise the data contracts. It is not a recording of any model output, and no model has run against it. See backend/app/data/README.md.",
+  "_deliberately_incomplete": "Objective OBJ-COST has no rationale, constraint CON-TEAM names a kind with no value, and initiative INI-CHAT has no description. The brief is meant to be thin, because an incomplete brief is the normal starting point and the advisor's job is to notice.",
+
+  "context_id": "CTX-LARKFIELD-1",
+  "organisation": "Larkfield Regional Freight",
+  "situation": "A regional road freight operator with roughly 180 staff and 60 vehicles. The board has asked the operations director to bring back a shortlist of AI initiatives before the November review. Nobody in the company has run an AI project before.",
+
+  "objectives": [
+    {
+      "id": "OBJ-LATE",
+      "statement": "Reduce late deliveries on the regional network",
+      "rationale": "Two large retail customers have raised it in the last quarterly review and one has hinted at retendering."
+    },
+    {
+      "id": "OBJ-COST",
+      "statement": "Lower the administrative cost per shipment",
+      "rationale": null
+    }
+  ],
+
+  "constraints": [
+    {
+      "id": "CON-BUDGET",
+      "kind": "budget",
+      "value": "about 150,000 EUR for the first year, including internal time",
+      "notes": "The operations director believes this is approved but has not seen it confirmed in writing."
+    },
+    {
+      "id": "CON-TEAM",
+      "kind": "headcount",
+      "value": null,
+      "notes": "A constraint the manager knows exists but has not quantified."
+    },
+    {
+      "id": "CON-DEADLINE",
+      "kind": "timeline",
+      "value": "something demonstrable before the board review in November",
+      "notes": null
+    },
+    {
+      "id": "CON-DATA",
+      "kind": "regulatory",
+      "value": "customer address data cannot leave the EU",
+      "notes": null
+    }
+  ],
+
+  "initiatives": [
+    {
+      "id": "INI-ROUTE",
+      "name": "Route optimisation assistant",
+      "description": "Suggest daily route adjustments to dispatchers based on traffic, load and delivery windows.",
+      "claimed_objectives": ["OBJ-LATE", "OBJ-COST"]
+    },
+    {
+      "id": "INI-DOCS",
+      "name": "Customs document extraction",
+      "description": "Extract structured fields from scanned customs paperwork so that clerks check rather than retype.",
+      "claimed_objectives": ["OBJ-COST"]
+    },
+    {
+      "id": "INI-CHAT",
+      "name": "Customer service chatbot",
+      "description": null,
+      "claimed_objectives": ["OBJ-COST"]
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 """HTTP surface.
 
-Skeleton stage: a health endpoint only. The advisory endpoints do not exist
-yet, and nothing here calls a model.
+A health endpoint only. The data contracts in app.models exist and are tested,
+but no endpoint exposes them yet: there is no advisory loop, no session, and
+nothing here calls a model.
 """
 
 from __future__ import annotations
@@ -24,7 +25,9 @@ class HealthResponse(BaseModel):
     status: str = Field(description="ok when the backend is serving requests")
     service: str
     version: str
-    stage: str = Field(description="Build stage; 'skeleton' means no advisory logic exists yet")
+    stage: str = Field(
+        description="Build stage. 'data-contracts' means the contracts exist but nothing executes advice yet"
+    )
     model_configured: bool = Field(
         description="Whether a model provider and key are present. The key itself is never returned."
     )
@@ -44,16 +47,22 @@ def health() -> HealthResponse:
         stage=BUILD_STAGE,
         model_configured=settings.model_configured,
         offline_fixture_mode=settings.offline_fixture_mode,
-        implemented=["health"],
+        implemented=[
+            "health",
+            "data contracts",
+            "contract validation",
+            "reference resolution",
+        ],
         not_implemented=[
             "model calls",
             "runtime prompts",
             "advisory loop",
-            "comparison",
-            "recommendation",
-            "revision",
+            "producing a comparison",
+            "producing a recommendation",
+            "producing a revision",
             "sessions",
-            "scenarios",
+            "persistence",
             "export",
+            "scenario endpoints",
         ],
     )

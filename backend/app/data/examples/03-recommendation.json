@@ -1,0 +1,95 @@
+{
+  "_note": "FICTIONAL SAMPLE DATA, WRITTEN BY HAND. Not a recorded model response. No model has run in this project.",
+  "_shows": "A justified shortlist carrying its own open unknowns, including the question the manager skipped. INI-CHAT is filed as insufficient_information rather than not_recommended, because the brief never described it and rejecting an option nobody has specified would be a judgement about a name.",
+
+  "context_id": "CTX-LARKFIELD-1",
+
+  "summary": "Start with customs document extraction. It is the only option that can show a measurable result before the November board review, it depends on paperwork the company already holds rather than on data whose existence is unconfirmed, and its failure mode is cheap. Keep route optimisation as the next step rather than the first one, and do not treat the chatbot as a candidate until someone says what it would do.",
+
+  "items": [
+    {
+      "initiative_id": "INI-DOCS",
+      "stance": "recommended",
+      "rationale": "Around 400 documents a week at six to ten minutes each is enough volume for extraction to repay setup, the inputs are paperwork the company already has, and a clerk checking extracted fields can tell immediately whether the output is any good. That last point matters more than it sounds for an organisation with no prior AI project: the people doing the work can judge the result themselves, so trust does not depend on a metric nobody understands.",
+      "supported_by": [
+        { "kind": "clarification.answer", "ref_id": "Q-VOLUME" },
+        { "kind": "brief.objective", "ref_id": "OBJ-COST" },
+        { "kind": "brief.constraint", "ref_id": "CON-DEADLINE" }
+      ],
+      "rests_on_assumptions": [
+        "That the documents are broadly similar in layout. If they are not, the effort rises sharply and this recommendation should be revisited.",
+        "That clerks would accept a check-and-correct workflow. Nobody has asked them."
+      ]
+    },
+    {
+      "initiative_id": "INI-ROUTE",
+      "stance": "consider_later",
+      "rationale": "This addresses the objective the board actually cares about, and it is the more valuable of the two well-specified options. It is second because the question that determines its size, whether usable historical data exists, was asked and skipped. Committing to it now would mean guessing at that answer, and the guess would decide whether this is a three-month project or a year-long one.",
+      "supported_by": [
+        { "kind": "brief.objective", "ref_id": "OBJ-LATE" },
+        { "kind": "brief.constraint", "ref_id": "CON-BUDGET" }
+      ],
+      "rests_on_assumptions": [
+        "That dispatchers plan routes by experience today rather than with an existing tool."
+      ]
+    },
+    {
+      "initiative_id": "INI-CHAT",
+      "stance": "insufficient_information",
+      "rationale": "The brief gives this a name and no description. It is not being rejected; it has not been specified. Ranking it against the other two would mean inventing what it does and then assessing the invention.",
+      "supported_by": [{ "kind": "brief.initiative", "ref_id": "INI-CHAT" }],
+      "rests_on_assumptions": []
+    }
+  ],
+
+  "risks": [
+    {
+      "description": "Document layouts turn out to vary more than expected across the two depots and the customers they serve.",
+      "consequence_if_realised": "Extraction accuracy drops, clerks correct more than they accept, and the workflow costs more time than it saves.",
+      "early_signal": "Accuracy on the first fifty documents differing noticeably between depots."
+    },
+    {
+      "description": "Nobody is free to own the work after launch.",
+      "consequence_if_realised": "The system degrades quietly as document formats drift, and within a year it is distrusted and bypassed.",
+      "early_signal": "No name is offered when the ownership question is put a second time."
+    },
+    {
+      "description": "The budget is not actually confirmed.",
+      "consequence_if_realised": "Work starts and stops partway, which is worse for internal credibility than not starting.",
+      "early_signal": "The written confirmation does not arrive when asked for."
+    }
+  ],
+
+  "first_actions": [
+    {
+      "action": "Sample fifty recent customs documents across both depots and check them against their downstream records.",
+      "purpose": "Establishes the current error rate as a baseline, and shows how much layouts vary. Both answers change the recommendation if they come back badly.",
+      "resolves_unknown": "The current error rate on manually keyed documents, and how similar the layouts are."
+    },
+    {
+      "action": "Ask the transport management system administrator what delivery and traffic history is retained, and for how long.",
+      "purpose": "This is the skipped question. Answering it is what moves route optimisation from second place to a decision.",
+      "resolves_unknown": "Whether usable historical data exists for route optimisation."
+    },
+    {
+      "action": "Get the budget confirmed in writing before committing anyone's time.",
+      "purpose": "The manager believes it is approved but has not seen it confirmed.",
+      "resolves_unknown": null
+    },
+    {
+      "action": "Ask the manager what the chatbot was meant to do and who it would serve.",
+      "purpose": "Either it becomes a candidate that can be assessed, or it comes off the list deliberately rather than by neglect.",
+      "resolves_unknown": "What INI-CHAT actually is."
+    }
+  ],
+
+  "open_unknowns": [
+    "Whether historical delivery and traffic data exists. Asked as Q-DATA and skipped by the manager, so it is unknown rather than assumed either way.",
+    "Who would own any of this day to day after launch. Asked as Q-TEAM and not yet answered.",
+    "The headcount available, which the brief names as a constraint without a value.",
+    "The current error rate on manually keyed documents.",
+    "What the customer service chatbot would actually do."
+  ],
+
+  "confidence_note": "Moderate for the choice of first step, low for the ordering behind it. The case for starting with document extraction rests on a volume figure the manager gave directly and on a deadline that is hard to argue with, so it is reasonably firm. The case for placing route optimisation second rather than first rests on an unknown that was skipped rather than resolved: if usable history turns out to exist, that ordering is the wrong way round and should be revisited rather than defended."
+}

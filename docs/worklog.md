@@ -300,3 +300,138 @@ under its existing name. No branch was renamed, and no force-push was used.
 Published to <https://github.com/AbderrahmaneGuermat/ai-initiative-advisor> on branch `master`,
 with history preserved and upstream tracking configured. No features were added. Awaiting review
 before the advisory loop, runtime prompts and model integration are built.
+
+---
+
+## 2026-09-18 — Prompt [004](prompts/004-data-contracts-and-foundations.md), data contracts and foundations
+
+**Instruction:** Correct five documentation inconsistencies, implement the data contracts, add one
+fictional worked example, test the contract boundaries. No model calls, advisory loop, persistence,
+exports or frontend redesign.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+### Part A — corrections
+
+1. **Unused configuration removed.** `BACKEND_HOST` and `BACKEND_PORT` were advertised in
+   `.env.example` and declared in the settings object, but nothing read them: the address is
+   hard-coded in `scripts/dev-backend.mjs`. Setting them would have changed nothing while appearing
+   to. Both are deleted, and the documentation now states that the local addresses are fixed and
+   where they are fixed. Recorded as D-015.
+2. **IPv6 claim narrowed.** The README described the dev server binding the IPv6 loopback as
+   general behaviour. It is now stated as what was observed on the one Windows 11 machine this was
+   tested on, and the same correction is applied to the comment in `frontend/vite.config.ts`.
+   Platform support and platforms actually tested are now distinguished.
+3. **Schema overclaim corrected.** The architecture had said that separate schema fields mean "an
+   assumption cannot arrive labelled as a fact." That is false: a model can put anything in any
+   field and the schema accepts it if the shape is right. Corrected in the architecture, in
+   requirements C5, and in decision D-003, with the reasoning recorded as D-016. The honest claim
+   is narrower and still worth having: structural separation and resolvable references make a wrong
+   claim findable by a reader who is not its author. They do not prevent one.
+4. **Action and prompt mismatch resolved.** The architecture listed a `diagnose.md` prompt while
+   the permitted action set had no `diagnose` action, which meant that prompt could never have run.
+   `diagnose` is now a permitted action, and every action is bound to its output contract in one
+   declaration, `ACTION_OUTPUT_CONTRACTS`. A test fails if an action is ever added without one.
+   Recorded as D-017.
+5. **Stack rationale corrected.** The claim that Next.js or TypeScript would blur the
+   Intelligence-over-Code boundary is withdrawn from both the architecture and the decision record.
+   The stack is now explained on suitability and on the project owner's familiarity, which is the
+   true reason. Recorded as D-018, which also names the pattern: dressing a preference as a
+   methodological requirement sounds more rigorous and is simply less true.
+
+Historical development prompts were not edited. Corrections live in current documentation and in
+new decision entries, as instructed.
+
+### Part B — data contracts
+
+Added under `backend/app/models/`: `common.py`, `brief.py`, `clarification.py`, `comparison.py`,
+`recommendation.py`, `actions.py`, `references.py`.
+
+Design points worth recording:
+
+- **Explicit unknowns.** Where a value may be absent, the field is required and nullable rather
+  than optional with a default. A producer has to write `null` deliberately. Nothing is filled in
+  quietly.
+- **No numbers anywhere.** Priority is list order plus a coarse qualitative stance. A test walks
+  every output contract recursively and fails if any numeric field appears at any depth, so scoring
+  cannot return under another name without someone arguing for it.
+- **Three answer states.** Answered, skipped and unanswered are distinct. A skipped question is a
+  decision the manager made; an unanswered one is not. Neither may carry answer text, so nothing is
+  attributed to a manager who did not reply, and neither is citable as a source.
+- **References are structural.** `references.py` checks that a cited identifier exists. It is a
+  separate explicit call rather than a model validator, because a payload cannot see the brief it
+  was produced against, and because keeping it explicit stops it being mistaken for a guarantee the
+  type system provides.
+- **Business judgement stayed out of validators.** No validator contains a rule about what makes an
+  initiative good. An incomplete brief is valid, and a test pins that: noticing thinness is the
+  advisor's job, not a validator's.
+
+### Part C — worked example
+
+One fictional scenario, Larkfield Regional Freight, with three candidate initiatives and a
+deliberately incomplete brief: an objective with no rationale, a constraint naming a kind with no
+value, and an initiative with a name and no description.
+
+Four example payloads run in sequence against it: a clarification round with one answered, one
+skipped and one untouched question; a comparison; a recommendation; and a revision after the budget
+is cut. All are labelled as hand-authored fiction in the files themselves and in
+`backend/app/data/README.md`, which states explicitly that they are not recorded model responses,
+not offline fixtures, and not evidence that the advisor works.
+
+The example carries the design property the qualitative approach exists to produce, and a test pins
+it: the question the manager skipped becomes an entry under missing evidence for the initiative it
+affects, and is carried forward into both the recommendation and the revision. It never becomes a
+low rating.
+
+### Checks performed
+
+All executed in this session on Windows 11, Python 3.14.5.
+
+| Check | Result |
+|---|---|
+| `pytest backend` | **44 passed**, 0 failed, in 0.35s |
+| Tests run from the repository root and from `backend/` | Both pass, after adding `backend/pytest.ini` |
+| Unknown advisory action rejected | Passes |
+| Batch of four clarification questions rejected; three accepted | Passes |
+| Answered question with no answer, and skipped question carrying text, both rejected | Passes |
+| Unanswered question dropped from a round, rejected | Passes |
+| Unresolvable source reference detected | Passes |
+| Reference to a skipped answer does not resolve | Passes |
+| Recommendation naming an initiative absent from the brief, detected | Passes |
+| Every action has a declared output contract | Passes |
+| No numeric field anywhere in any output contract, at any depth | Passes |
+| All five example payloads validate, and every reference resolves | Passes |
+| Backend imports and serves after the configuration change | HTTP 200 on `/api/health` and `/openapi.json` |
+| Health endpoint reports the new stage | `data-contracts`, with implemented and not-implemented lists updated |
+
+### Issues and observations
+
+1. **A test gave a false failure on its first run**, and the cause is worth recording. The
+   numeric-field check originally searched the *string* form of each annotation for `int`, which
+   matched the substring inside `StringConstraints`. It reported four fields that hold no numbers
+   at all. Rewritten to walk annotations structurally with `typing.get_args`, recursing into nested
+   models, and exempting enums and booleans. The lesson is ordinary and worth keeping: a check that
+   greps a repr is not a check.
+2. **The health endpoint was updated but the frontend was not.** The interface reports whatever
+   stage the backend gives it, so it now displays `data-contracts`, but no frontend work was done
+   in this iteration and none was asked for.
+3. **`TestClient` could not be used.** Starlette's test client requires `httpx`, which is not a
+   dependency. Rather than add one for a single check, the backend was verified by running Uvicorn
+   and issuing real HTTP requests. That is a better check in itself, but it means the suite
+   contains no in-process API test.
+4. **What the tests do not establish.** They confirm shape and referential integrity. They do not
+   confirm that the example analysis is sound, that a claim filed under stated facts is a fact, or
+   that a citation supports the claim citing it. Two tests exist specifically to pin that limit,
+   including one where a real reference supports a nonsensical claim and passes deliberately.
+5. **Still nothing produces advice.** No model integration, no runtime prompts, no advisory loop,
+   no persistence, no exports. The contracts describe a conversation the application cannot yet
+   have.
+6. **The prompt files named in `ACTION_PROMPTS` do not exist.** The mapping declares the paths that
+   `backend/prompts/` will hold. Nothing loads them yet, so a wrong path there would not currently
+   fail anything.
+
+### Status at end of entry
+
+Corrections applied, contracts implemented and tested, one worked example validated. Committed and
+pushed to the confirmed repository. Awaiting review before runtime prompts, the model client and
+the advisory loop are built.

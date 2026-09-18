@@ -62,16 +62,27 @@ Each turn works like this:
    result to session state through a legal transition.
 5. The loop continues or stops. Code enforces the stop conditions.
 
-The permitted actions, fixed in code:
+### The action contract
 
-| Action | When the prompt would choose it |
-|---|---|
-| `request_context` | Essential inputs are absent entirely |
-| `ask_clarification` | Up to three decision-critical questions would change the advice |
-| `compare` | Enough is known to set out the alternatives honestly |
-| `recommend` | A comparison exists and a justified choice can be defended |
-| `revise` | A constraint changed after advice was given |
-| `await_user` | Nothing useful can be done until the manager responds |
+Every permitted action, the prompt that performs it, and the contract its output must satisfy.
+This table is the single source of truth. An earlier revision listed a `diagnose.md` prompt that
+had no corresponding action, which meant the prompt could never have been reached. `diagnose` is
+now a permitted action in its own right. See decision D-017.
+
+| Action | Chosen when | Prompt | Output contract |
+|---|---|---|---|
+| `diagnose` | The brief needs reading before anything else: gaps, contradictions and unstated assumptions | `actions/diagnose.md` | `Diagnosis` |
+| `request_context` | Essential inputs are absent entirely | `actions/request-context.md` | `ContextRequest` |
+| `ask_clarification` | Up to three decision-critical questions would change the advice | `actions/clarify.md` | `ClarificationBatch` |
+| `compare` | Enough is known to set out the alternatives honestly | `actions/compare.md` | `Comparison` |
+| `recommend` | A comparison exists and a justified choice can be defended | `actions/recommend.md` | `Recommendation` |
+| `revise` | A constraint changed after advice was given | `actions/revise.md` | `Revision` |
+| `await_user` | Nothing useful can be done until the manager responds | none | `AwaitUser` |
+
+The mapping is declared once in code, as `ACTION_OUTPUT_CONTRACTS` in
+`backend/app/models/actions.py`, so the action set and the output contracts cannot drift apart.
+`await_user` is the one action with no prompt: it ends the turn and hands control back, so there
+is no model output to validate.
 
 A well-specified brief may reach `compare` immediately. A vague one may clarify twice. The order
 is an outcome, not a schedule.
@@ -103,11 +114,19 @@ assumptions, missing evidence, feasibility constraints, and trade-offs. Definiti
 
 Two consequences for the code:
 
-- The schema has a distinct field per category, so provenance cannot blur in transit. An
-  assumption cannot arrive labelled as a fact because it was convenient.
-- **There is no numeric default anywhere.** A missing value stays missing. The schema has no
+- The contract gives each category its own field, so a producer has to choose one when writing a
+  claim, and a reader can see which was chosen. **This is structural, not epistemic.** It does not
+  establish that a statement placed under stated facts is true, nor that something filed as a fact
+  was not actually an assumption. A schema cannot tell the difference. What it gives is a
+  consistent place to look and something a reviewer or a later check can act on.
+- **There is no numeric default anywhere.** A missing value stays missing. The contract has no
   "unknown becomes zero" path, because a zero would be indistinguishable from a measured low, and
-  the ranking would silently punish the option we know least about.
+  any later ranking would silently punish the option we know least about.
+
+Claims that rest on the manager's input carry lightweight source references naming the brief field
+or clarification answer they came from. Referential checks confirm that a referenced identifier
+exists. **They do not confirm that the cited input supports the claim.** Traceability makes a
+wrong claim findable; it does not make a claim right. See decision D-016.
 
 If scoring is introduced later it arrives with documented scales, documented weights and a written
 statement of limitations. It will not appear implicitly.
@@ -140,7 +159,15 @@ Implemented parts are marked. Everything else is planned.
 │   │   │   ├── model_client.py        ⬜  provider interface + fixture mode
 │   │   │   ├── guards.py              ⬜  limits, action contract, transitions
 │   │   │   └── validation.py          ⬜  schema parse + single repair pass
-│   │   ├── models/schemas.py          ⬜  declared contracts
+│   │   ├── models/                    ✅  declared contracts, tested
+│   │   │   ├── common.py              ✅  identifiers, source references, strict base
+│   │   │   ├── brief.py               ✅  objectives, constraints, initiatives
+│   │   │   ├── clarification.py       ✅  questions, answered / skipped / unanswered
+│   │   │   ├── comparison.py          ✅  the five categories
+│   │   │   ├── recommendation.py      ✅  advice and revision
+│   │   │   ├── actions.py             ✅  permitted actions, action-to-output map
+│   │   │   └── references.py          ✅  referential integrity only
+│   │   ├── data/                      ✅  one fictional worked example, hand-authored
 │   │   ├── store/session.py           ⬜  append-only session history
 │   │   ├── export/render.py           ⬜  Markdown / JSON brief
 │   │   └── data/scenarios/            ⬜  fictional sample scenarios
@@ -171,6 +198,7 @@ software was built. The second is the software.
 | `system/advisor.md` | Persona, tone, refusal behaviour, the standing rule that an unknown is never presented as a finding |
 | `actions/next-action.md` | Choosing the next advisory action from the permitted set, with reasoning |
 | `actions/diagnose.md` | Naming gaps, contradictions and unstated assumptions in the brief |
+| `actions/request-context.md` | Stating which essential inputs are missing before anything else can proceed |
 | `actions/clarify.md` | Choosing at most three questions that would actually change the advice |
 | `actions/compare.md` | Deriving relevant criteria; producing the five-category comparison |
 | `actions/recommend.md` | A justified choice, traceable to facts and labelled assumptions, with risks and first moves |
@@ -245,12 +273,22 @@ rather than an add-on. The Python SDK ecosystem for model providers is the most 
 separate document that drifts. Guards and validation are pure Python functions, fully unit
 testable without a model.
 
-### Rejected alternative
+### Alternative considered
 
-A single Next.js application with API routes would remove a process and a port. Rejected, because
-it would move prompt handling and schema validation into TypeScript, where the validation story is
-weaker than Pydantic, and it would blur the boundary between interface and intelligence that this
-assessment is about.
+A single Next.js application with API routes would remove a process and a port, and would be a
+perfectly reasonable way to build this.
+
+We chose the two-process split on suitability and familiarity, not on principle. Pydantic gives
+the strongest declarative contract-and-validation story of the options available, which matters
+because parsing model output is the code this application leans on most. The project owner is more
+productive in Python for that layer. A separate backend also keeps the runtime prompt files beside
+the code that loads them, which suits how we intend to review them.
+
+**We make no claim that Next.js or TypeScript would compromise Intelligence-over-Code.** An
+earlier revision said it would blur the boundary between interface and intelligence. That was
+wrong, and it is withdrawn. Where business judgement lives is a matter of how an application is
+organised, not of which language or framework holds the transport layer. The same separation is
+achievable in a single TypeScript project. See decision D-018.
 
 ### Model provider
 
