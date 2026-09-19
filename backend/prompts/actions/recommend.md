@@ -1,6 +1,6 @@
 ---
 id: action.recommend
-version: "1.1.0"
+version: "1.2.0"
 role: Give a justified recommendation from the comparison
 inputs:
   - the manager's brief
@@ -14,6 +14,7 @@ constraints:
   - open_unknowns must include every skipped and unanswered question
   - No unsupported claims about cost, duration, feasibility or return
   - Only answered questions may be cited; a skipped one is named in open_unknowns
+  - Missing information is never by itself a reason for not_recommended
 ---
 
 Give the manager your advice, built from the comparison you already produced.
@@ -23,15 +24,53 @@ once, using its exact identifier.
 
 # Stance
 
-- **recommended** — do this, now or next.
-- **consider_later** — worth doing, but not first, and say what would move it up.
-- **not_recommended** — do not do this, and say why on its merits.
-- **insufficient_information** — cannot be assessed, because too little is known about the option
-  itself. Use this rather than rejecting something nobody has described. Rejecting an option on the
-  strength of its title is a judgement about a name.
+Each stance answers a different question. Choose by asking which question you are actually in a
+position to answer.
+
+- **recommended** — the evidence supports doing this, now or next.
+- **consider_later** — there is a supported reason to put it behind something else. Say what would
+  move it up.
+- **not_recommended** — **evidence you were given supports a substantive reason against pursuing
+  it.** Something about the option itself, or about this organisation's situation, argues against
+  it, and you can name that thing and point at what it rests on.
+- **insufficient_information** — the available evidence does not support assessing it adequately.
+  The problem is what you do not know, not what you know.
+
+## The distinction that matters most
+
+**Missing information is not evidence against an option.** An option nobody has described is not
+thereby a bad option; it is an unassessed one. Filing it as `not_recommended` converts a gap in the
+brief into a verdict on the work, and a manager reading that would believe you had found something
+wrong when you had found nothing at all.
+
+The test: strike out everything you do not know and read what is left. If what remains contains a
+reason against the option, `not_recommended` is right, and you should state that reason. If what
+remains is thin or empty, the honest stance is `insufficient_information`.
+
+**You can still say work should not begin.** These are compatible, and saying both is often the
+most useful thing you can do:
+
+> `insufficient_information`. The chatbot has no described scope, so it cannot be assessed against
+> the other options. Do not commit budget or people to it until someone says what it would do and
+> who it would serve. That is a scoping step, not a decision to build.
+
+That is a clear instruction about sequencing without a claim about merit you have not earned. It
+is not the same as:
+
+> `not_recommended`. The chatbot has no scope, so it would consume budget with high risk.
+
+The second sentence asserts a risk profile derived from an absence. It sounds decisive and is
+unfounded: nothing about the option was weighed, because nothing about it was known.
+
+The reverse error matters too. Do not retreat to `insufficient_information` when you do have
+grounds. An option that is well described and plainly wrong for this manager is `not_recommended`,
+and hiding behind uncertainty would be its own kind of evasion.
 
 **Order carries priority.** The first item is what you would do first. There are no scores, no rank
 numbers and no ratings anywhere in your answer.
+
+An `insufficient_information` option has no established priority, so its position in the list
+carries no claim. Say so in its rationale rather than leaving its placement to imply one.
 
 # Rationale
 

@@ -236,8 +236,10 @@ This is the part nobody has done yet. With the backend and frontend running:
 1. Open <http://localhost:5173>. The fictional Larkfield brief loads in the left panel.
 2. Check the header. It should say the model is configured. That means the settings look usable,
    not that the key works; the first request proves that.
-3. Edit anything you like in the left panel, then select **Start advisory session**. Expect roughly
-   a minute: the advisor reads the brief, and typically diagnoses and compares before asking.
+3. Edit anything you like in the left panel, then select **Start advisory session**. The advisor
+   is working while the indicator shows; this may take a few minutes. Measured turns have run from
+   roughly thirty seconds to over three minutes. The turn deadline in `MAX_TURN_SECONDS` is the
+   point at which work is abandoned, not a response time anyone has promised.
 4. The centre panel fills as steps complete. When questions appear, answer one, tick **Skip** on
    another, and leave a third untouched. Then send.
 5. Confirm the three states are visible and distinct afterwards: answered, skipped, unanswered.

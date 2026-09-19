@@ -105,10 +105,16 @@ export default function AdvisoryThread({
       <div className="panel__body">
         {/* One announcement region for the whole panel. Says only what the
             application knows: that a step is running, or which step finished.
-            No percentages, no invented stages. */}
+            No percentages, no invented stages.
+
+            The wait is described as "a few minutes" rather than a number. The
+            turn deadline is a ceiling at which work is abandoned, not a
+            response time anyone has promised, and measured turns have run from
+            about thirty seconds to past three minutes. Quoting the deadline as
+            if it were a maximum would be inventing a guarantee out of a limit. */}
         <p className="visually-hidden" role="status" aria-live="polite">
           {busy
-            ? `${busy}. This can take up to a minute.`
+            ? `${busy}. The advisor is working. This may take a few minutes.`
             : session?.recommendation
               ? "A recommendation is ready."
               : roundPending
@@ -119,7 +125,7 @@ export default function AdvisoryThread({
         {busy && (
           <div className="notice notice--busy">
             <span className="spinner" aria-hidden="true" />
-            {busy}… This can take up to a minute.
+            {busy}… The advisor is working. This may take a few minutes.
           </div>
         )}
 
@@ -257,7 +263,7 @@ export default function AdvisoryThread({
                   {working && (
                     <span className="submit-row__status">
                       <span className="spinner" aria-hidden="true" />
-                      Working. This can take up to a minute.
+                      The advisor is working. This may take a few minutes.
                     </span>
                   )}
                 </div>

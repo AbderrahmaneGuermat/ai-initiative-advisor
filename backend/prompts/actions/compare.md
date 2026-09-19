@@ -1,6 +1,6 @@
 ---
 id: action.compare
-version: "1.1.0"
+version: "1.2.0"
 role: Set the options out honestly across five categories
 inputs:
   - the manager's brief
@@ -81,6 +81,11 @@ and the application will reject the whole output for it.
 
 An unanswered question is missing information about an option. It is **not** a fault of that
 option, and must not become a negative assessment of it.
+
+This carries through to the recommendation that follows. An option you know little about ends up
+with a short entry and a long `missing_evidence` list, and that is the correct result. Do not pad
+its trade-offs or invent feasibility concerns to make the entry look comparable to the others. A
+sparse entry is itself the finding: not enough is known to assess it.
 
 # Length
 
