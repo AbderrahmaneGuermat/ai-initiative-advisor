@@ -13,20 +13,19 @@ import {
   type ConnectionState,
   type SessionView,
 } from "./api/client";
-import BackendStatus from "./components/BackendStatus";
-import ContextPanel from "./components/ContextPanel";
-import AdvisoryThread from "./components/AdvisoryThread";
-import AdvicePanel from "./components/AdvicePanel";
-import ErrorNotice from "./components/ErrorNotice";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import Clarification from "./components/Clarification";
+import DecisionOverview from "./components/DecisionOverview";
+import ReasoningView from "./components/ReasoningView";
+import { AlertIcon, BookIcon } from "./components/icons";
 import "./styles/layout.css";
 
-/** The session identifier in the URL, if the page was opened with one. */
 function sessionFromUrl(): string | null {
   const value = new URLSearchParams(window.location.search).get("session");
   return value && value.trim() ? value.trim() : null;
 }
 
-/** Put a session identifier in the URL without adding a history entry. */
 function rememberInUrl(sessionId: string): void {
   const url = new URL(window.location.href);
   if (url.searchParams.get("session") === sessionId) return;
@@ -40,26 +39,23 @@ type Recovery =
   | { kind: "restored"; id: string }
   | { kind: "missing"; id: string };
 
+type View = "overview" | "reasoning";
+
 /**
  * Application shell.
  *
- * Holds the brief being edited and the current session. Everything advisory
- * comes from the backend; nothing here decides anything about the advice.
+ * Layout: a compact context sidebar and one main column. The main column shows
+ * whatever the session most needs attention on. While a clarification round is
+ * open, the form is the first thing in it, so the manager is never scrolling
+ * past an empty advice panel to reach the thing being asked of them.
  *
- * **Reopening a session.** Opening the page with `?session=<id>` fetches that
- * session and restores what it holds. A session the browser created also puts
- * its identifier in the URL, so a refresh or a reopened tab finds it again.
+ * **Reopening a session.** `?session=<id>` fetches that session and restores it.
+ * A session created here writes its identifier into the URL. This recovers
+ * in-memory backend state; it is not persistence, and a backend restart loses
+ * every session. Recovery issues one GET and never runs the advisor.
  *
- * This recovers state the running backend still has in memory. It is **not**
- * persistence: a backend restart loses every session, and the link then reports
- * the session as unavailable rather than pretending otherwise.
- *
- * Recovery is read-only. It issues one GET and never starts a session, submits
- * answers or continues one, so reopening a link costs nothing.
- *
- * Editing the brief after a session has started begins a new session rather
- * than revising the existing one. Revision is not implemented, and presenting
- * fresh advice as a considered change of mind would misrepresent what happened.
+ * Nothing in this file decides anything advisory. Switching views, expanding a
+ * section and reopening a session are all local or read-only.
  */
 export default function App() {
   const [connection, setConnection] = useState<ConnectionState>({ kind: "checking" });
@@ -68,12 +64,14 @@ export default function App() {
   const [briefEdited, setBriefEdited] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AdvisoryError | null>(null);
+  const [view, setView] = useState<View>("overview");
+  const [scenarioFailed, setScenarioFailed] = useState(false);
   const [recovery, setRecovery] = useState<Recovery>(() => {
     const id = sessionFromUrl();
     return id ? { kind: "loading", id } : { kind: "none" };
   });
 
-  const adviceRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const hadRecommendation = useRef(false);
 
   useEffect(() => {
@@ -92,8 +90,8 @@ export default function App() {
     const requested = sessionFromUrl();
 
     if (requested) {
-      // A restored brief must not be overwritten by the sample scenario, so the
-      // scenario is not requested at all on this path.
+      // The sample scenario is not requested on this path, so it cannot
+      // overwrite a restored brief.
       fetchSession(requested)
         .then((restored) => {
           setSession(restored);
@@ -108,29 +106,21 @@ export default function App() {
 
     fetchScenario()
       .then((scenario) => setBrief(scenario.brief))
-      .catch(() => {
-        /* The status indicator already reports an unreachable backend. */
-      });
+      .catch(() => setScenarioFailed(true));
 
     return () => controller.abort();
   }, []);
 
-  const goToAdvice = useCallback(() => {
-    const node = adviceRef.current;
-    if (!node) return;
-    node.scrollIntoView({ behavior: "smooth", block: "start" });
-    node.querySelector<HTMLElement>("#advice-heading")?.focus();
-  }, []);
-
-  // When a recommendation appears, move focus to it. The manager's attention is
-  // wherever they last acted, which is rarely where the answer landed.
+  // When advice arrives, move focus to the brief's heading. Attention is
+  // wherever the manager last acted, which is rarely where the answer landed.
   useEffect(() => {
     const has = Boolean(session?.recommendation);
     if (has && !hadRecommendation.current && busy === null) {
-      goToAdvice();
+      setView("overview");
+      headingRef.current?.focus();
     }
     hadRecommendation.current = has;
-  }, [session?.recommendation, busy, goToAdvice]);
+  }, [session?.recommendation, busy]);
 
   const guard = useCallback(async (label: string, work: () => Promise<SessionView>) => {
     setBusy(label);
@@ -141,8 +131,6 @@ export default function App() {
       setBrief(next.brief);
       setBriefEdited(false);
       setRecovery({ kind: "none" });
-      // So a refresh or a reopened tab can find this session again, for as long
-      // as the backend still holds it.
       rememberInUrl(next.session_id);
       if (next.error) setError(next.error);
     } catch (cause) {
@@ -183,7 +171,6 @@ export default function App() {
     setBriefEdited(true);
   }, []);
 
-  /** Load the sample scenario after a failed recovery. A GET, nothing else. */
   const onStartOver = useCallback(() => {
     const url = new URL(window.location.href);
     url.searchParams.delete("session");
@@ -194,88 +181,209 @@ export default function App() {
       .then((scenario) => {
         setBrief(scenario.brief);
         setBriefEdited(false);
+        setScenarioFailed(false);
       })
-      .catch(() => {
-        /* The status indicator already reports an unreachable backend. */
-      });
+      .catch(() => setScenarioFailed(true));
   }, []);
+
+  const advice = session?.recommendation ?? session?.previous_recommendation ?? null;
+  const outdated = Boolean(session && !session.recommendation && session.previous_recommendation);
+  const roundPending = session?.awaiting_answers ?? false;
+  const canContinue = Boolean(session && !roundPending && !session.recommendation && !busy);
+  const initiativeCount = brief?.initiatives.length ?? 0;
 
   return (
     <div className="app">
-      <header className="app__header">
-        <div className="app__identity">
-          <h1 className="app__title">AI Initiative Advisor</h1>
-          <p className="app__subtitle">
-            Prioritise enterprise AI initiatives against your objectives and constraints
-          </p>
-        </div>
-        <BackendStatus connection={connection} />
-      </header>
+      <Header connection={connection} organisation={brief?.organisation ?? null} />
 
-      {recovery.kind === "loading" && (
-        <div className="banner banner--info" role="status">
-          <span className="spinner" aria-hidden="true" />
-          <span className="banner__text">Reopening session {recovery.id}…</span>
-        </div>
-      )}
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {busy
+          ? `${busy}. The advisor is working. This may take a few minutes.`
+          : session?.recommendation
+            ? "A recommendation is ready."
+            : roundPending
+              ? "The advisor has asked some questions."
+              : ""}
+      </p>
 
-      {recovery.kind === "restored" && (
-        <div className="banner banner--info" role="status">
-          <strong className="banner__label">Reopened</strong>
-          <span className="banner__text">
-            Session {recovery.id}, as the advisor left it. Nothing was regenerated.
-          </span>
-        </div>
-      )}
+      <div className="frame">
+        <Sidebar
+          brief={brief}
+          onChange={onBriefChange}
+          onStart={onStart}
+          busy={busy !== null}
+          sessionActive={session !== null}
+          briefEdited={briefEdited}
+          emptyNote={
+            recovery.kind === "missing"
+              ? "No brief is loaded. Load the sample brief to begin."
+              : recovery.kind === "loading"
+                ? "Reopening the session…"
+                : scenarioFailed
+                  ? "The sample brief could not be loaded. Check the service status above."
+                  : "Loading the sample scenario…"
+          }
+        />
 
-      {recovery.kind === "missing" && (
-        <div className="banner banner--error" role="alert">
-          <div className="banner__body">
-            <strong className="banner__label">Session unavailable</strong>
-            <span className="banner__text">
-              Session {recovery.id} was not found. Sessions are held in the advisor's memory and
-              are lost when it restarts, so this link may have outlived it.
-            </span>
-            <span className="banner__text muted small">
-              Nothing has been started. Choosing below loads the sample brief; the advisor only
-              runs when you select <em>Start advisory session</em>.
-            </span>
-          </div>
-          <button className="button" onClick={onStartOver}>
-            Load the sample brief
-          </button>
-        </div>
-      )}
+        <main className="main">
+          {recovery.kind === "loading" && (
+            <p className="notice notice--info">
+              <span className="spinner" aria-hidden="true" />
+              Reopening session {recovery.id}…
+            </p>
+          )}
 
-      {error && <ErrorNotice error={error} onDismiss={() => setError(null)} />}
+          {recovery.kind === "restored" && (
+            <p className="notice notice--info">
+              <strong>Reopened.</strong> Session {recovery.id}, as the advisor left it. Nothing was
+              regenerated.
+            </p>
+          )}
 
-      <main className="app__main">
-        <div className="app__side">
-          <ContextPanel
-            brief={brief}
-            onChange={onBriefChange}
-            onStart={onStart}
-            busy={busy !== null}
-            sessionActive={session !== null}
-            briefEdited={briefEdited}
-          />
-        </div>
+          {recovery.kind === "missing" && (
+            <div className="notice notice--warn" role="alert">
+              <div>
+                <strong>Session unavailable.</strong> Session {recovery.id} was not found. Sessions
+                are held in the advisor's memory and are lost when it restarts, so this link may
+                have outlived it. Nothing has been started.
+              </div>
+              <button className="button" onClick={onStartOver}>
+                Load the sample brief
+              </button>
+            </div>
+          )}
 
-        {/* Advice first, then the working detail. On a laptop the two stack in
-            one wide column rather than being squeezed into narrow ones. */}
-        <div className="app__main-column">
-          <AdvicePanel session={session} ref={adviceRef} />
-          <AdvisoryThread
-            session={session}
-            busy={busy}
-            onSubmitAnswers={onAnswers}
-            onContinue={onContinue}
-            onGoToAdvice={goToAdvice}
-          />
-        </div>
-      </main>
+          {error && (
+            <div className="notice notice--warn" role="alert">
+              <div>
+                <strong>
+                  {error.recoverable ? "Could not finish that step." : "Something needs attention."}
+                </strong>{" "}
+                {error.message}
+                {error.recoverable && " You can try again."}
+                {error.details && error.details.length > 0 && (
+                  <details className="disclose">
+                    <summary className="disclose__summary">Technical detail</summary>
+                    <ul className="disclose__list">
+                      {error.details.map((detail, index) => (
+                        <li key={index}>{detail}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+              <button className="button button--quiet" onClick={() => setError(null)}>
+                Dismiss
+              </button>
+            </div>
+          )}
 
-      <footer className="app__footer">
+          {!session && (
+            <section className="intro">
+              <p className="eyebrow">Your decision brief</p>
+              <h1 className="h1" tabIndex={-1} ref={headingRef}>
+                Start with what you already know.
+              </h1>
+              <p className="lede">
+                {initiativeCount > 0
+                  ? `${initiativeCount} candidate initiatives are on the table. The advisor reads the
+                     brief, asks only what would change the answer, and sets out the options with
+                     their evidence, assumptions and gaps kept apart.`
+                  : "The advisor reads your brief, asks only what would change the answer, and sets out the options with their evidence, assumptions and gaps kept apart."}
+              </p>
+              <p className="muted small">
+                Nothing runs until you select <strong>Start advisory session</strong>.
+              </p>
+            </section>
+          )}
+
+          {session && roundPending && (
+            <Clarification session={session} busy={busy} onSubmit={onAnswers} />
+          )}
+
+          {session && !roundPending && !advice && (
+            <section className="intro">
+              <p className="eyebrow">Your decision brief</p>
+              <h1 className="h1" tabIndex={-1} ref={headingRef}>
+                In progress.
+              </h1>
+              <p className="lede">
+                The advisor has paused. Continue when you are ready; nothing runs until you do.
+              </p>
+              {canContinue && (
+                <button className="button button--primary" onClick={onContinue}>
+                  Continue
+                </button>
+              )}
+            </section>
+          )}
+
+          {session && advice && (
+            <>
+              <section className="intro">
+                <p className="eyebrow">Your decision brief</p>
+                <h1 className="h1" tabIndex={-1} ref={headingRef}>
+                  A focused place to start.
+                </h1>
+                <p className="lede">
+                  {advice.items.length} initiative{advice.items.length === 1 ? "" : "s"} considered
+                  against your objectives and the limits you gave.
+                </p>
+
+                {outdated && (
+                  <p className="notice notice--warn">
+                    <AlertIcon size={15} />
+                    <span>
+                      <strong>Out of date.</strong> You have answered something since this advice
+                      was written, so it no longer reflects what the advisor knows. It is kept for
+                      reference. Continue to refresh it.
+                    </span>
+                  </p>
+                )}
+
+                <nav className="tabs" aria-label="Views">
+                  <button
+                    type="button"
+                    className={view === "overview" ? "tab is-active" : "tab"}
+                    aria-current={view === "overview"}
+                    onClick={() => setView("overview")}
+                  >
+                    Decision overview
+                  </button>
+                  <button
+                    type="button"
+                    className={view === "reasoning" ? "tab is-active" : "tab"}
+                    aria-current={view === "reasoning"}
+                    onClick={() => setView("reasoning")}
+                  >
+                    <BookIcon size={14} />
+                    Reasoning &amp; sources
+                  </button>
+                </nav>
+              </section>
+
+              {view === "overview" ? (
+                <DecisionOverview session={session} onExplain={() => setView("reasoning")} />
+              ) : (
+                <ReasoningView session={session} />
+              )}
+
+              {canContinue && (
+                <button className="button" onClick={onContinue}>
+                  Continue
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Before any advice exists there is still a diagnosis and perhaps a
+              comparison worth reading, so the reasoning view is shown directly
+              rather than behind a tab that has nothing to switch to. */}
+          {session && !advice && !roundPending && <ReasoningView session={session} />}
+        </main>
+      </div>
+
+      <footer className="foot">
         <span>
           Built for a BlueCallom Enterprise AI Application Developer assessment, using the
           Intelligence-over-Code method.

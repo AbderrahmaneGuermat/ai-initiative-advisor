@@ -1,76 +1,80 @@
 /*
- * Design tokens.
+ * Design tokens for the approved enterprise interface.
  *
- * Provisional. The interface design and its rationale are assessment part 3
- * and are not yet written; these values exist so the skeleton is legible, not
- * because they have been argued for.
+ * Restrained on purpose: a soft neutral page, white surfaces, thin borders and
+ * almost no shadow, so that the one thing worth looking at is the
+ * recommendation. Colour carries emphasis; it never carries meaning on its own.
+ * Every status that uses colour also states itself in words.
+ *
+ * Dark mode is deliberately absent. The approved concept specifies one light
+ * palette, and a second theme would be a second set of contrast decisions
+ * nobody has reviewed.
  */
 
 :root {
-  /* Neutrals */
-  --color-bg: #f6f7f9;
+  /* --- Surfaces ---------------------------------------------------------- */
+  --color-page: #f5f6f4;
   --color-surface: #ffffff;
-  --color-surface-sunken: #f0f2f5;
-  --color-border: #dfe3e8;
-  --color-border-strong: #c4cbd4;
+  --color-hover: #eef1ed;
 
-  /* Text */
-  --color-text: #1b2430;
-  --color-text-muted: #5a6572;
-  --color-text-faint: #8590a0;
+  /* --- Text -------------------------------------------------------------- */
+  --color-text: #192d29;
+  --color-text-muted: #596b65;
 
-  /* Accent and state */
-  --color-accent: #2f5fd0;
-  --color-accent-soft: #e8eefc;
-  --color-warning: #8a5a00;
-  --color-warning-soft: #fdf3dc;
-  --color-warning-border: #e8cf95;
-  --color-success: #1e6b45;
-  --color-danger: #a32a2a;
+  /* --- Lines ------------------------------------------------------------- */
+  --color-border: #dde5df;
 
-  /* Spacing */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
+  /* --- Accent ------------------------------------------------------------ */
+  --color-accent: #116b54;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: #edf6f0;
 
-  /* Type */
-  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.0625rem;
-  --text-xl: 1.375rem;
+  /* --- Attention --------------------------------------------------------- */
+  --color-warning: #795617;
+  --color-warning-soft: #faf3e5;
 
-  /* Shape */
-  --radius: 6px;
-  --radius-lg: 10px;
-  --shadow-card: 0 1px 2px rgba(27, 36, 48, 0.06), 0 1px 3px rgba(27, 36, 48, 0.04);
-}
+  /* --- Type -------------------------------------------------------------- */
+  /* Inter when the machine already has it; no web request is made for it. */
+  --font-sans: Inter, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "SF Mono", Consolas, monospace;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #12161c;
-    --color-surface: #1a1f27;
-    --color-surface-sunken: #151a21;
-    --color-border: #2b323c;
-    --color-border-strong: #3b444f;
+  --text-body: 14px;
+  --text-h1: 29px;
+  --text-h2: 25px;
+  --text-org: 18px;
+  --text-section: 14px;
+  --text-sm: 13px;
+  --text-xs: 12px;
+  --text-meta: 11px;
 
-    --color-text: #e6eaf0;
-    --color-text-muted: #a3adba;
-    --color-text-faint: #7b8694;
+  --leading-body: 1.55;
+  --leading-h1: 1.2;
+  --leading-h2: 1.25;
 
-    --color-accent: #7ba1f5;
-    --color-accent-soft: #1d2740;
-    --color-warning: #e3bd6a;
-    --color-warning-soft: #2c2415;
-    --color-warning-border: #4a3d1d;
-    --color-success: #6fc79b;
-    --color-danger: #e08585;
+  /* --- Spacing ----------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
 
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
-  }
+  --header-pad-y: 18px;
+  --header-pad-x: 24px;
+  --sidebar-width: 204px;
+  --sidebar-pad-y: 27px;
+  --sidebar-pad-x: 20px;
+  --main-pad: 28px;
+  --frame-max: 1280px;
+
+  /* --- Shape ------------------------------------------------------------- */
+  --radius-lead: 11px;
+  --radius-card: 9px;
+  --radius-control: 7px;
+  --radius-pill: 999px;
+  --lead-edge: 3px;
+  --lead-pad: 23px;
+  --card-pad: 17px;
+  --card-gap: 12px;
 }

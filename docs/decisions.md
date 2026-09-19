@@ -965,3 +965,26 @@ The example session identifier appears nowhere in application code; it is read f
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with
 recommendations in [requirements.md](requirements.md), section D-b.
+
+## D-045 — The decision brief leads with the decision, and invents no ranking
+
+**Status:** Confirmed · 2026-09-19
+
+The interface was rebuilt around one reading order: what to do, what else was considered, what to
+confirm before committing. The rationale, tokens and states are in [ui-ux.md](ui-ux.md).
+
+**Every recommended initiative gets a lead card, and none is called "first".** The recommendation
+is a list and the contract carries no priority, so array order is not evidence of one. The approved
+design showed a "Recommended first" label; it is omitted until the advisor states an order. With
+several recommended initiatives there are several lead cards, and with none there is an explicit
+"Nothing is recommended yet" card.
+
+**Identifiers are translated, not hidden.** Source references show the objective, constraint,
+option or question they point to. The identifier stays in the tooltip for traceability, and an
+unresolvable reference is shown raw rather than dropped.
+
+**Diagnostics moved behind the status chip.** Service version, stage and configuration are for
+whoever runs the service. The manager sees one truthful status.
+
+**Presentation only.** No contract, prompt or backend behaviour changed. The same session payload
+drives the new view.

@@ -146,7 +146,7 @@ Implemented parts are marked. Everything else is planned.
 ├── scripts/dev-backend.mjs            ✅  finds the venv interpreter per platform
 ├── docs/                              ✅
 │   ├── requirements.md · architecture.md · decisions.md · worklog.md
-│   ├── ui-ux.md                       ⬜  written alongside the interface
+│   ├── ui-ux.md                       ✅  interface rationale
 │   └── prompts/                       ✅  DEVELOPMENT prompt record, not runtime
 ├── backend/
 │   ├── app/
@@ -179,10 +179,11 @@ Implemented parts are marked. Everything else is planned.
 └── frontend/
     ├── index.html · package.json · vite.config.ts · tsconfig.json   ✅
     └── src/
-        ├── main.tsx · App.tsx         ✅
-        ├── api/client.ts              ✅  health check only
-        ├── components/                ✅  layout shell, non-functional
-        └── styles/                    ✅  design tokens
+        ├── main.tsx · App.tsx         ✅  shell, session state, reopening by URL
+        ├── api/client.ts              ✅  typed calls to the backend
+        ├── lookup.ts                  ✅  identifiers to readable names
+        ├── components/                ✅  header, sidebar, clarification, overview, reasoning
+        └── styles/                    ✅  design tokens and layout
 ```
 
 `docs/prompts/` and `backend/prompts/` are kept apart deliberately. The first records how the

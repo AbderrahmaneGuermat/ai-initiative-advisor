@@ -128,6 +128,7 @@ attributing them to the method.
 |---|---|
 | [docs/requirements.md](docs/requirements.md) | Assessment scope, what BlueCallom states, our interpretation, open decisions |
 | [docs/architecture.md](docs/architecture.md) | Architecture, the advisory loop, responsibilities, technology rationale |
+| [docs/ui-ux.md](docs/ui-ux.md) | Interface rationale: hierarchy, progressive disclosure, uncertainty, states, responsive behaviour |
 | [docs/decisions.md](docs/decisions.md) | Decision record, including superseded decisions and why they changed |
 | [docs/worklog.md](docs/worklog.md) | What was actually done, what was checked, what is unresolved |
 | [docs/prompts/](docs/prompts/) | Chronological record of the development instructions, verbatim |

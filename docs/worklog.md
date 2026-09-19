@@ -1419,3 +1419,105 @@ They close the gap left by the previous entry, which recorded that the recommend
 Session recovery implemented and verified without spending anything. Screenshots and saved
 responses are local and untracked. The real backend is left running, still holding session
 `2a60d8040351`.
+
+## 2026-09-19 — Prompt [013](prompts/013-visual-redesign.md), visual redesign
+
+**Instruction:** Implement the approved visual redesign with its exact colour, type and geometry
+tokens, cover every session state, verify in a browser at three viewports, and document the
+interface rationale. No paid model calls.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### What changed
+
+- **Tokens and layout rewritten** in `frontend/src/styles/`: the approved palette, type scale and
+  geometry, a 1280 px frame with a 204 px sidebar, and two responsive steps (1100 px, 860 px).
+- **New components.** `Header` (brand, organisation, status chip with service details folded
+  away), `Sidebar` (organisation, start control, what matters, limits, options, and the full brief
+  editor behind one toggle), `Clarification`, `DecisionOverview`, `ReasoningView`, and inline
+  outline icons. `lookup.ts` turns source identifiers into readable names.
+- **Removed** `AdvicePanel`, `AdvisoryThread`, `ContextPanel`, `BackendStatus` and `ErrorNotice`,
+  whose responsibilities moved into the components above.
+- **Completed view** in two tabs: *Decision overview* (summary, a lead card per recommended
+  initiative, other initiatives in two columns, "Confirm before committing", how far to trust it)
+  and *Reasoning & sources* (answers given, reading of the brief, the comparison with evidence,
+  assumptions and unknowns kept apart, risks and confidence).
+- **Rationale** written in [ui-ux.md](ui-ux.md). Recorded as D-045.
+
+### Departures from the approved design
+
+1. **No "Recommended first" label.** The advisor does not state an order, so the interface does
+   not imply one. See D-045.
+2. **Icons are inline SVG** drawn to the outline style, not an icon library, to avoid a dependency
+   and any external request.
+3. **"Why this recommendation"** is a neutral text link to the reasoning tab, not a button.
+4. **Long constraints are cut to four lines** in the sidebar, after the screenshots showed the
+   staffing constraint pushing the rest of the context out of view. The full text is in the
+   tooltip and the editor.
+
+### Corrections made after inspecting the screenshots
+
+- A focus ring was drawn around the page heading after it received focus from code. Headings with
+  `tabindex="-1"` now show no ring; controls keep theirs.
+- The recommendation summary was too heavy at 25 px semibold for paragraph-length text. Weight
+  reduced; size kept.
+- The sidebar said "Loading the sample scenario…" indefinitely on the session-unavailable path and
+  when the backend could not be reached. It now says what is actually true in each case.
+
+### Browser verification
+
+Chromium through Playwright, against the running dev server and the real backend.
+
+| Check | Result |
+|---|---|
+| Start control visible without scrolling at 1366 × 768 | Yes |
+| Brief editor fields clipped | 0 |
+| Pending questions render, sending state disables the control and says "Sending…" | Yes |
+| Completed session: lead card, other initiatives, open rows, first actions, reasoning sections | All render |
+| Outdated advice notice | Shown |
+| Session unavailable notice | Shown, sidebar no longer claims to be loading |
+| 1440 × 900 | Frame 1280 px, sidebar 204 px |
+| 390 × 844 | No horizontal overflow; cards stacked |
+| Page errors | None |
+| Frontend type check, production build, backend tests (169) | All pass |
+
+### Where each screenshot came from
+
+Saved under `.local-review/screenshots/ui-redesign-001/`, which is untracked.
+
+- **LIVE**, the real backend: initial view, expanded brief, the completed session `2a60d8040351`
+  reopened by URL (overview, first actions, open questions, reasoning, expanded reasoning, wide and
+  mobile views), and the unavailable-session path.
+- **FIXTURE**, for the three states the surviving session cannot show: a pending clarification
+  round, the sending state, and outdated advice. Each fixture is the live session's own payload
+  with its status fields changed, served to the page by intercepting one `GET`, so the text on
+  screen is still real model output. The sending capture's `POST` to the fixture's answers
+  endpoint was held by the browser and never reached the backend; the backend log has no such
+  request.
+
+### Model calls
+
+**None made by this work.** Session `2a60d8040351` still shows 9 provider attempts, 4 accepted
+records and turn 3, unchanged. Every request the verification pages sent was a `GET`, apart from
+the intercepted fixture `POST` above.
+
+**One request this work cannot account for.** The backend access log shows a
+`POST /api/sessions` after the first verification run finished and before the follow-up checks,
+preceded by a fresh page load (health and scenario requests). None of the verification scripts
+recorded it, and none of them press Start. It most likely came from another open browser tab. The
+log does not name the session it created, so whether it made model requests, and at what cost,
+cannot be told from what is recorded here. The backend now reports 3 active sessions.
+
+### Limitations
+
+1. Checked in Chromium only, at three viewports. No screen-reader test.
+2. Three states were verified with fixtures rather than live sessions, for the reason above.
+3. Sessions are still in memory only; the screenshots of the live session depend on this backend
+   process staying up.
+
+### Status at end of entry
+
+Redesign implemented, verified and documented. The real backend is left running, still holding
+session `2a60d8040351`.
