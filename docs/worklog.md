@@ -1340,3 +1340,82 @@ iteration, and Part A records that the earlier contradiction went unnoticed.
 
 Demonstration data corrected and verified live. Screenshots local and untracked. The real
 application is left running.
+
+---
+
+## 2026-09-19 — Prompt [012](prompts/012-session-recovery.md), reopening an existing session
+
+**Instruction:** Add the smallest frontend change that reopens an existing backend session, then
+capture the completed corrected example without any new model requests.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### The session was preserved first
+
+Before touching anything, `GET /api/sessions/2a60d8040351` and its trace were fetched and saved to
+the ignored local review directory. The backend was left running throughout, because its sessions
+are in memory and a restart would have lost the one this iteration exists to photograph.
+
+**Provider attempts at that point: 9.**
+
+### What was added
+
+`fetchSession()` in the frontend client, one `GET` against the endpoint the backend already had.
+
+In the shell: a `?session=<id>` parameter is read on startup, the session is fetched, and its brief,
+questions, comparison, recommendation and status are restored. On that path the sample scenario is
+not requested at all, so it cannot overwrite a restored brief. A session created in the browser
+writes its identifier into the URL through `replaceState`.
+
+A 404 produces a clear notice saying the session was not found, that sessions are held in memory
+and are lost when the advisor restarts, and that nothing has been started. It offers one control,
+which loads the sample brief and still leaves the advisor to be started deliberately.
+
+The example session identifier is not in the code. It is read from the URL.
+
+Recorded as D-044.
+
+### Verification, at 1366 × 768 against the real backend
+
+| Check | Result |
+|---|---|
+| Open `?session=2a60d8040351` | Restored. Banner reads "Reopened … as the advisor left it. Nothing was regenerated." |
+| Stances rendered | 3: recommended, consider later, not enough information |
+| Reload the page | Still restored, 3 stances |
+| Fresh browser context, same URL | Still restored, 3 stances, same summary |
+| Restored staffing constraint | Contains `0.7`, does not contain `1.5` |
+| Comparison and recommendation status | Both `current` |
+| Missing session, bogus identifier | Clear notice, 0 stances, real session untouched |
+| The offered control after a missing session | Loads the sample brief, starts nothing |
+| **Every `/api` request the page made** | **All GET. Zero non-GET requests** |
+| **Provider attempts before / after** | **9 / 9, unchanged** |
+| Accepted records, turn number | 4 and 3, unchanged |
+| Page errors | None |
+| Frontend type check and production build | Both pass |
+
+### The screenshots this produced
+
+Saved under `.local-review/screenshots/final-coherent-restored/`. **These show the current frontend
+displaying an already completed live session, fetched from the real backend. They are not a new
+model execution**, and no provider request was made while taking them.
+
+They close the gap left by the previous entry, which recorded that the recommendation for session
+`2a60d8040351` could not be photographed because the interface could not reopen it. It can now.
+
+### Limitations
+
+1. **This is recovery, not persistence.** A backend restart loses every session. The link then
+   reports the session as unavailable, which is the honest outcome, but the advice is gone.
+2. **No sharing.** The URL works only against a backend that still holds that session in the same
+   process. It is not a shareable record of the advice, and export remains unimplemented.
+3. **No listing.** There is no way to see which sessions the backend holds, so a lost identifier
+   is a lost session even while the process is running.
+4. **One run's worth of evidence**, as with everything live in this repository.
+
+### Status at end of entry
+
+Session recovery implemented and verified without spending anything. Screenshots and saved
+responses are local and untracked. The real backend is left running, still holding session
+`2a60d8040351`.

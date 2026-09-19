@@ -933,6 +933,34 @@ residency are defined." That is the intended shape. It is one run, not a control
 
 ---
 
+## D-044 — A session can be reopened from its URL, and that is recovery, not persistence
+
+**Status:** Confirmed · 2026-09-19
+
+Opening the page with `?session=<id>` fetches that session and restores its brief, questions,
+comparison, recommendation and status. A session the browser creates writes its identifier into the
+URL, so a refresh or a reopened tab finds it again.
+
+**Why this was needed.** The previous iteration could not photograph its own result. A live session
+completed correctly, the backend still held it, and the interface had no way to show it: there was
+no route, no control and no client call that loaded a session by identifier. Closing the tab made
+finished advice unreachable, which is a poor property for a tool a manager might step away from.
+
+**Read-only by construction.** Recovery issues one `GET` and nothing else. It cannot start a
+session, submit answers or continue one, so reopening a link never spends anything. Verified by
+recording every request the page made across four navigations: **zero non-GET requests**, and the
+session's provider-attempt count unchanged at 9 before and after.
+
+**Recovery, not persistence, and the difference is stated wherever it could mislead.** Sessions live
+in process memory. A backend restart loses them, and the URL then reports the session as
+unavailable rather than silently starting a new one. The failure path offers to load the sample
+brief, and even then the advisor runs only when the manager chooses to start it. No database was
+added and the advisory workflow is unchanged.
+
+The example session identifier appears nowhere in application code; it is read from the URL.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

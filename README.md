@@ -231,6 +231,23 @@ backend/.venv/bin/python -m pytest backend                # macOS, Linux
    blank stays an open unknown and is carried into the advice rather than guessed at.
 5. The comparison and recommendation appear as they are produced.
 
+### Reopening a session
+
+A session you started puts its identifier in the address bar:
+
+```
+http://localhost:5173/?session=2a60d8040351
+```
+
+Refreshing that page, or opening the link again later, reopens the session and shows the advice as
+the advisor left it. Doing so issues a single `GET` and runs nothing: it never starts a session,
+sends answers or continues one, so reopening a link costs nothing.
+
+**This is not persistence.** Sessions live in the backend's memory. A backend restart loses every
+one of them, and the link then reports the session as unavailable rather than pretending otherwise.
+It offers to load the sample brief, and even then the advisor runs only when you select **Start
+advisory session**.
+
 Editing the brief after a session has started begins a **new** session. It does not revise the
 existing advice, and the interface says so rather than implying otherwise.
 

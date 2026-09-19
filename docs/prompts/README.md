@@ -33,6 +33,7 @@ two are never mixed.
 | 009 | [009-interface-improvements.md](009-interface-improvements.md) | Interface work from the browser walkthrough: primary action reachable, progress beside the control, readable hierarchy, and the manager's submitted answers shown back |
 | 010 | [010-provenance-and-final-live-run.md](010-provenance-and-final-live-run.md) | Establish replay provenance, correct the waiting message, clarify stance semantics, and run the final live browser session |
 | 011 | [011-staffing-consistency-correction.md](011-staffing-consistency-correction.md) | Correct the staffing inconsistency in the demonstration data and verify it with one live session |
+| 012 | [012-session-recovery.md](012-session-recovery.md) | Reopen an existing backend session from a URL, and capture the completed example without new model requests |
 
 ## Attribution
 

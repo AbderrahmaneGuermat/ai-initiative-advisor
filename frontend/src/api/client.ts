@@ -264,6 +264,20 @@ export async function fetchScenario(): Promise<{ scenario_id: string; label: str
   return request("/api/scenario");
 }
 
+/**
+ * Reopen a session the backend still holds.
+ *
+ * A GET, and only a GET. Nothing here starts a session, submits answers or
+ * continues one, so reopening a link costs nothing and cannot change what the
+ * advisor concluded.
+ *
+ * Sessions live in the backend's memory. This recovers a session the running
+ * process still has; it is not persistence, and a backend restart loses them.
+ */
+export async function fetchSession(sessionId: string): Promise<SessionView> {
+  return request(`/api/sessions/${encodeURIComponent(sessionId)}`);
+}
+
 export async function startSession(brief: Brief): Promise<SessionView> {
   return request("/api/sessions", { method: "POST", body: JSON.stringify({ brief }) });
 }
