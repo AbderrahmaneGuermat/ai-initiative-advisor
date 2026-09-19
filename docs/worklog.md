@@ -1187,3 +1187,156 @@ production build both passing. The revision was committed and pushed before any 
 Provenance documented, wording corrected, stance semantics clarified, and one final live browser
 session completed and recorded. Screenshots are local and untracked. The real application is left
 running.
+
+---
+
+## 2026-09-19 — Prompt [011](prompts/011-staffing-consistency-correction.md), staffing consistency
+
+**Instruction:** Correct the staffing inconsistency the reviewer found in the demonstration data,
+and verify it with one live session. Scope limited to that.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### Part A — correction to the previous entry
+
+**The fictional answer submitted in session `40879adc7c67` was internally inconsistent, and that
+was my error in composing it.** The answer addressed the question that was asked, which was the
+point of that run, but its arithmetic did not hold:
+
+| Component | As written | In FTE, five-day week |
+|---|---|---|
+| Operations director | one day a week | 0.2 |
+| Dispatcher | half a day a week | 0.1 |
+| IT analyst | 40% of their time | 0.4 |
+| **Total** | stated as "about one and a half" | **0.7** |
+
+The headline figure and the breakdown disagree by more than a factor of two.
+
+**The diagnosis did not detect it.** Read in full from the saved output for that session, the
+diagnosis reported exactly one contradiction, and it was a different one: that the brief says the
+operations director "believes" the budget is approved while no written confirmation exists. On
+staffing it recorded a gap, not a contradiction, and repeated the headline number without checking
+it:
+
+> "Team constraint exists but was not quantified in the brief; however a staffing answer was
+> provided indicating about 1.5 FTE available for three months and no data engineer."
+
+The summary carried the same figure forward, "≈1.5 FTE over three months", and so did the
+recommendation. The advisor took the stated total at face value and never reconciled it against the
+components it was given in the same sentence.
+
+**Nothing has been altered.** Session `40879adc7c67`, its screenshots in
+`.local-review/screenshots/final-live/`, its trace and the worklog entry describing it are
+unchanged. This is an appended correction, not a rewrite.
+
+**What this says about the product.** Arithmetic consistency inside a manager's own answer is not
+something the advisor currently checks, and nothing in this iteration changed that. The diagnosis
+prompt asks for contradictions in the brief; it does not ask for the numbers to be reconciled. A
+manager could state a total that their own breakdown does not support and the advice would be built
+on the wrong figure. Worth considering as a later change, and deliberately not attempted here.
+
+---
+
+### Part B — the corrected demonstration
+
+**Staffing was supplied in the brief, not as a clarification answer.** The existing `CON-TEAM`
+headcount constraint, previously empty, was filled in through the interface before the session
+started, so the advisor received the capacity regardless of which questions it chose to ask. It did
+not ask about staffing in this run, which is consistent with having been told.
+
+The text entered:
+
+> "We can allocate a total of 0.7 full-time equivalents over the next three months: the operations
+> director at 20% of a full-time working week, one dispatcher at 10%, and our only IT analyst at
+> 40%. These allocations total 70% of one full-time role. We have no data engineer and no previous
+> AI project experience. Work beyond this internal capacity would require an external contractor;
+> contractor availability and funding are not confirmed."
+
+| | |
+|---|---|
+| Revision under test | `16b2ee11547a1e8550ab701f0593adac5a003af0` |
+| Session | `2a60d8040351` |
+| Model | `gpt-5-mini`, reasoning effort `low` |
+| Prompt versions | system.advisor 1.2.0, action.next 1.2.0, action.clarify 1.1.0, action.diagnose 1.1.0, action.compare 1.2.0, action.recommend 1.2.0 |
+| Viewport | 1366 × 768, real application, no replay |
+
+**Action sequence, as it actually happened.**
+
+1. Turn 1, 16.5s: `ask_clarification`. Three questions, about written budget confirmation,
+   contractor procurement, and what historical operational data exists.
+2. The questions were read before anything was typed. The data question was answered with a short
+   fictional reply consistent with the brief: four years of shipment timestamps at about 9,000
+   deliveries a month, 14 months of GPS covering about 45 of the 60 vehicles, paper driver logs,
+   around 400 scanned customs PDFs a week, all hosted in the company's own Frankfurt data centre.
+   The budget question was skipped. The contractor question was left blank.
+3. Turn 2, 31.3s: `diagnose`, then the selector chose `await_user` and the turn paused. **No error.**
+   The interface offered Continue, which is what that state is for.
+4. Turn 3, 75s, via Continue: `compare`, then `recommend`.
+
+**The staffing figure in the advice.** Searched across the whole session payload:
+
+| Figure | Occurrences |
+|---|---|
+| 0.7 FTE | **9** |
+| 1.5 FTE | **0** |
+
+It appears in the comparison's feasibility constraints, in an assumption about whether that
+capacity is sufficient in skill as well as time, and in the recommendation: route optimisation
+"likely [needs] more data-engineering/optimisation effort than you can safely run on 0.7 FTE
+without confirmed contractor access."
+
+**Counts and usage.** Every figure came from the provider; none is missing.
+
+| Measure | Value |
+|---|---|
+| Provider requests | 9 (5 selector, 4 action, 0 repair) |
+| Rejected outputs, repairs, cancelled, failed | 0, 0, 0, 0 |
+| Requests with no usage reported | 0 |
+| Input tokens | 35,582, of which **18,560 cached** |
+| Output tokens | 11,097, of which 2,496 reasoning |
+| Total counted | 46,679 |
+| Estimated cost | **$0.027** |
+| Model time | about 123 seconds across three turns |
+
+**Cached input tokens were observed for the first time.** Every previous live run reported zero.
+One run is not a pattern and nothing is concluded from it beyond the fact that it happened.
+
+**State consistency.** `comparison_status` and `recommendation_status` both report `current`, there
+is no superseded recommendation, and the comparison and recommendation records carry the same
+answers version as the session.
+
+The undescribed chatbot again came back `insufficient_information`, with the reasoning that without
+scope, channels or conversational logs its effort and impact cannot be judged. That is the second
+live run to produce that outcome under the 1.2.0 prompts.
+
+---
+
+### What this run does and does not show
+
+**It shows** that a coherent staffing capacity supplied in the brief is carried correctly through
+diagnosis, comparison and recommendation, with no trace of the earlier inconsistent figure.
+
+**It does not show** improved contradiction detection. No model-behaviour change was made in this
+iteration, and Part A records that the earlier contradiction went unnoticed.
+
+### Limitations
+
+1. **The recommendation was not captured in the interface.** The walkthrough script closed the
+   browser at the pause after diagnosis, and **the interface cannot resume an existing session**:
+   there is no route or control that loads a session by identifier, so a closed tab loses access to
+   advice the backend still holds. The session was completed with the same request the Continue
+   button issues, and its result is recorded here and in the trace, but the recommendation and
+   uncertainty screenshots for this run come from the API rather than the page. Rather than start
+   another paid session for prettier evidence, this is reported as a gap. The interface limitation
+   is itself worth fixing later.
+2. **One run.** As with every live observation in this repository.
+3. **Arithmetic inside a manager's answer is still unchecked**, as Part A sets out.
+4. Revision remains validated but not offered, persistence remains in memory, and offline fixture
+   replay remains unimplemented.
+
+### Status at end of entry
+
+Demonstration data corrected and verified live. Screenshots local and untracked. The real
+application is left running.
