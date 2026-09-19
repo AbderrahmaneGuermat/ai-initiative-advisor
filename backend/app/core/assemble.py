@@ -126,6 +126,7 @@ def _findings_summary(session: Session) -> dict[str, Any]:
     recommendation = session.recommendation
     if recommendation is not None:
         summary["recommendation"] = {
+            "still_current": session.recommendation_is_current(),
             "summary": recommendation.summary,
             "stances": {
                 item.initiative_id: item.stance.value for item in recommendation.items

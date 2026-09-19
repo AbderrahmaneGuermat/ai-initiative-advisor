@@ -144,7 +144,18 @@ def permitted_actions(
         if not session.comparison_is_current():
             allowed.add(AdvisoryAction.COMPARE)
 
-        if session.comparison is not None:
+        # A recommendation must rest on a comparison that reflects the current
+        # answers. This is a data-consistency prerequisite, not a fixed order:
+        # it says nothing about when to compare, only that advice cannot be
+        # built on analysis the manager's answers have since overtaken.
+        #
+        # And a recommendation that is already current is not offered again,
+        # so nothing is recomputed when nothing has changed.
+        if (
+            session.comparison is not None
+            and session.comparison_is_current()
+            and not session.recommendation_is_current()
+        ):
             allowed.add(AdvisoryAction.RECOMMEND)
 
     return allowed & SUPPORTED_ACTIONS
@@ -155,6 +166,7 @@ def validation_context(session: Session) -> ValidationContext:
         brief=session.brief,
         clarification_rounds=list(session.clarification_rounds),
         comparison=session.comparison,
+        comparison_is_current=session.comparison_is_current(),
     )
 
 
@@ -304,6 +316,15 @@ class AdvisoryEngine:
             permitted = permitted_actions(session, self._limits)
             if not permitted:
                 result.stopped_because = "no action is available"
+                return
+
+            if permitted == {AdvisoryAction.AWAIT_USER}:
+                # Nothing to choose between. Asking the selector would spend a
+                # request to hear the only possible answer, which is exactly the
+                # recomputation an identical resubmission must not trigger.
+                result.actions.append(AdvisoryAction.AWAIT_USER.value)
+                result.awaiting_user = True
+                result.stopped_because = "waiting for the manager"
                 return
 
             result.interrupted = "choosing the next step"
@@ -668,6 +689,17 @@ class AdvisoryEngine:
                 answers_version=session.answers_version,
             )
             return
+
+        if isinstance(payload, Recommendation) and not session.comparison_is_current():
+            # Second, independent guard at the point of writing. Validation
+            # already refuses this, but the rule matters enough that it should
+            # not depend on every caller building the validation context right.
+            raise OutputRejected(
+                [
+                    "refusing to commit a recommendation: the comparison it rests on "
+                    "predates the manager's latest answers"
+                ]
+            )
 
         if not isinstance(payload, (Diagnosis, Comparison, Recommendation, AwaitUser)) and (
             action is not AdvisoryAction.REQUEST_CONTEXT

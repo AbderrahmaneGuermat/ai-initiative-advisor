@@ -79,6 +79,10 @@ class ValidationContext:
     brief: ManagerBrief
     clarification_rounds: list[ClarificationRound] = field(default_factory=list)
     comparison: Comparison | None = None
+    #: Whether ``comparison`` reflects the current answers. A recommendation
+    #: resting on an outdated comparison is rejected here, so it cannot be
+    #: accepted even if a caller somewhere offers the action by mistake.
+    comparison_is_current: bool = True
 
     #: For revision only. Both must be real snapshots that actually exist.
     previous_brief: ManagerBrief | None = None
@@ -201,6 +205,13 @@ def _check_recommendation(
     if context.comparison is None:
         errors.append(
             "a recommendation requires a comparison first; none exists in this session"
+        )
+        return
+
+    if not context.comparison_is_current:
+        errors.append(
+            "the comparison predates the manager's latest answers, so it no longer reflects "
+            "what is known. It must be refreshed before a recommendation can rest on it."
         )
         return
 

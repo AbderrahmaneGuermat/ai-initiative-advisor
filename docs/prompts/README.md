@@ -29,6 +29,7 @@ two are never mixed.
 | 005 | [005-openai-advisory-flow.md](005-openai-advisory-flow.md) | Integrate OpenAI, implement the runtime prompts, the bounded advisory loop, the validation boundary and a working interface |
 | 006 | [006-live-test-readiness.md](006-live-test-readiness.md) | Fix five findings before the first live test: configuration status, the turn deadline, trace completeness, answer locking, and the schema explanation |
 | 007 | [007-live-run-corrections.md](007-live-run-corrections.md) | Record the first live run and correct what it found: timeout continuity, skipped-question references, advisor sequencing, and usage measurement |
+| 008 | [008-state-consistency.md](008-state-consistency.md) | State consistency: a recommendation requires a current comparison, history is kept but labelled, and a pending round is distinguished from an unanswered question |
 
 ## Attribution
 

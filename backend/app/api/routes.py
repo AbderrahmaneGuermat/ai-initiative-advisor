@@ -167,15 +167,57 @@ class AnswerSubmission(BaseModel):
 
 
 def _question_view(session) -> list[dict[str, Any]]:
-    return [
-        {
-            "id": qid,
-            "question": text,
-            "why_it_matters": why,
-            "status": status.value,
-        }
-        for qid, text, why, status in session.all_questions()
-    ]
+    """Every question, its answer status, and whether it still awaits a reply.
+
+    ``status`` and ``awaiting_response`` are different things. An unanswered
+    question in a round the manager has already submitted is an open unknown;
+    it is not asking for input. Only questions in a round not yet submitted
+    are editable.
+    """
+    out: list[dict[str, Any]] = []
+    for index, round_ in enumerate(session.clarification_rounds):
+        statuses = {r.question_id: r.status for r in round_.responses}
+        pending = session.round_is_pending(index)
+        for question in round_.batch.questions:
+            status = statuses.get(question.id, AnswerStatus.UNANSWERED)
+            out.append(
+                {
+                    "id": question.id,
+                    "question": question.question,
+                    "why_it_matters": question.why_it_matters,
+                    "status": status.value,
+                    "round": index,
+                    "awaiting_response": pending,
+                }
+            )
+    return out
+
+
+def _history_view(session) -> list[dict[str, Any]]:
+    """Every accepted output, oldest first. Nothing is removed when it goes stale."""
+    latest = {
+        AdvisoryAction.COMPARE: session.latest_record(AdvisoryAction.COMPARE),
+        AdvisoryAction.RECOMMEND: session.latest_record(AdvisoryAction.RECOMMEND),
+    }
+    out: list[dict[str, Any]] = []
+    for record in session.records:
+        if record.action in latest:
+            if record is latest[record.action]:
+                status = session.result_status(record.action)
+            else:
+                status = "superseded"
+        else:
+            status = "current"
+        out.append(
+            {
+                "action": record.action.value,
+                "turn": record.turn,
+                "answers_version": record.answers_version,
+                "created_at": record.created_at,
+                "status": status,
+            }
+        )
+    return out
 
 
 def _session_view(session, turn: Any = None) -> dict[str, Any]:
@@ -202,8 +244,27 @@ def _session_view(session, turn: Any = None) -> dict[str, Any]:
             {"id": qid, "question": text, "status": status.value}
             for qid, text, _why, status in session.open_questions()
         ],
+        # The comparison is returned whatever its status, with that status
+        # alongside, so the interface can label it rather than hide it.
         "comparison": comparison.model_dump(mode="json") if comparison else None,
-        "recommendation": recommendation.model_dump(mode="json") if recommendation else None,
+        "comparison_status": session.result_status(AdvisoryAction.COMPARE),
+        # Only a current recommendation is returned as the recommendation. One
+        # that the manager's answers have overtaken is returned separately, so
+        # the interface cannot present it as standing advice by accident.
+        "recommendation": (
+            recommendation.model_dump(mode="json")
+            if recommendation and session.recommendation_is_current()
+            else None
+        ),
+        "previous_recommendation": (
+            recommendation.model_dump(mode="json")
+            if recommendation and not session.recommendation_is_current()
+            else None
+        ),
+        "recommendation_status": session.result_status(AdvisoryAction.RECOMMEND),
+        "answers_version": session.answers_version,
+        "history": _history_view(session),
+        # Submission state, distinct from answer status.
         "awaiting_answers": session.has_pending_questions(),
         "error": None,
         "stopped_because": None,

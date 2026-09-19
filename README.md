@@ -47,6 +47,8 @@ and a validator. It does not mean it does anything.
 | Full execution trace: selector, action and repair attempts, with usage | **Works**, tested |
 | One repair attempt per invalid output | **Works**, tested |
 | Explicit handling of missing keys, auth, rate limits, timeouts, refusals, truncation | **Works**, tested |
+| Advice never rests on analysis your answers have overtaken | **Works**, tested at three boundaries |
+| Outdated results kept and labelled rather than shown as current | **Works**, tested |
 | Revision | **Validated but not offered.** The contract and its checks exist; the user flow does not |
 | Persistence across restarts | **Not implemented.** Sessions are in memory and are lost on restart |
 | Offline fixture replay | **Not implemented.** Deferred |

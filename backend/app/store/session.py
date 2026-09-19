@@ -179,8 +179,57 @@ class Session:
             return False
         return record.answers_version >= self.answers_version
 
+    def recommendation_is_current(self) -> bool:
+        """Whether the stored recommendation still reflects what the manager has said.
+
+        Current means two things. It was produced against the latest answers,
+        and it was produced after the latest comparison, so it rests on the
+        analysis the session now holds rather than on one since replaced.
+
+        A recommendation that is not current stays in the history. It is not
+        deleted, and it is not presented as the standing advice either.
+        """
+        rec_index = self._latest_index(AdvisoryAction.RECOMMEND)
+        if rec_index is None:
+            return False
+        record = self.records[rec_index]
+        if record.answers_version < self.answers_version:
+            return False
+        cmp_index = self._latest_index(AdvisoryAction.COMPARE)
+        return cmp_index is None or rec_index > cmp_index
+
+    def _latest_index(self, action: AdvisoryAction) -> int | None:
+        for index in range(len(self.records) - 1, -1, -1):
+            if self.records[index].action is action:
+                return index
+        return None
+
+    def result_status(self, action: AdvisoryAction) -> str | None:
+        """'current', 'outdated', or None when there is no such result.
+
+        Exposed so the interface can tell standing advice from advice that is
+        waiting to be brought up to date, without working it out itself.
+        """
+        if self.latest_record(action) is None:
+            return None
+        if action is AdvisoryAction.COMPARE:
+            return "current" if self.comparison_is_current() else "outdated"
+        if action is AdvisoryAction.RECOMMEND:
+            return "current" if self.recommendation_is_current() else "outdated"
+        return "current"
+
     def clarification_rounds_opened(self) -> int:
         return len(self.clarification_rounds)
+
+    def round_is_pending(self, index: int) -> bool:
+        """True while the manager has not yet submitted this round.
+
+        Submission and answer content are tracked separately. A round is
+        submitted once the manager has sent it, whatever they left blank; after
+        that, an unanswered question in it is an open unknown, not a request
+        for more input.
+        """
+        return 0 <= index < len(self.clarification_rounds) and index not in self.responded_rounds
 
     def citable_answers(self) -> list[dict[str, str]]:
         """Answers a claim is allowed to cite, with their text.
@@ -335,12 +384,24 @@ class Session:
             )
         )
 
-    def record_answers(self, answers: dict[str, str | None], skipped: set[str]) -> None:  # noqa: C901
-        """Write the manager's own replies.
+    def record_answers(self, answers: dict[str, str | None], skipped: set[str]) -> bool:  # noqa: C901
+        """Write the manager's own replies. Returns whether anything changed.
 
         The only path by which an answer enters the session. Advisory output
         never reaches this method, so the model cannot invent, alter or complete
         what the manager said.
+
+        Two things are tracked separately here:
+
+        - **Submission.** Every round is marked as submitted, whatever the
+          manager left blank. That is what stops the round blocking.
+        - **Change.** ``answers_version`` advances only when an answer's text or
+          status actually differs from what was held. Resubmitting identical
+          answers therefore leaves the comparison and recommendation current,
+          and triggers no recomputation.
+
+        Answer text is compared after trimming surrounding whitespace, so a
+        trailing space is not a new answer.
 
         An identifier that was never asked is rejected rather than ignored.
         """
@@ -349,38 +410,44 @@ class Session:
         if unknown:
             raise SessionStateError(f"no such question in this session: {', '.join(unknown)}")
 
-        self.answers_version += 1
+        changed = False
 
         for index, round_ in enumerate(self.clarification_rounds):
-            # The manager has now had their turn on this round, whatever they
-            # chose to leave blank.
+            # Submission: the manager has now had their turn on this round.
             self.responded_rounds.add(index)
+
             updated: list[ClarificationResponse] = []
             for response in round_.responses:
                 qid = response.question_id
+                text = (answers.get(qid) or "").strip() if qid in answers else ""
 
                 if qid in skipped:
-                    updated.append(
-                        ClarificationResponse(
-                            question_id=qid, status=AnswerStatus.SKIPPED, answer=None
-                        )
+                    new = ClarificationResponse(
+                        question_id=qid, status=AnswerStatus.SKIPPED, answer=None
                     )
-                elif qid in answers and (answers[qid] or "").strip():
-                    updated.append(
-                        ClarificationResponse(
-                            question_id=qid,
-                            status=AnswerStatus.ANSWERED,
-                            answer=answers[qid],
-                        )
+                elif text:
+                    new = ClarificationResponse(
+                        question_id=qid, status=AnswerStatus.ANSWERED, answer=text
                     )
                 else:
                     # Left exactly as it was. An answer already given is not
                     # erased by a later submission that omits it.
-                    updated.append(response)
+                    new = response
+
+                if (new.status, new.answer) != (response.status, response.answer):
+                    changed = True
+                updated.append(new)
 
             self.clarification_rounds[index] = ClarificationRound(
                 batch=round_.batch, responses=updated
             )
+
+        if changed:
+            # Change: only now does existing analysis stop reflecting what the
+            # manager has said.
+            self.answers_version += 1
+
+        return changed
 
 
 class SessionStore:

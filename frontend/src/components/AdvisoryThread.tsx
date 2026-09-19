@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 
-import type { SessionView } from "../api/client";
+import type { AnswerStatus, SessionView } from "../api/client";
+
+const STATUS_LABEL: Record<AnswerStatus, string> = {
+  answered: "answered",
+  skipped: "skipped",
+  unanswered: "not answered",
+};
 
 /**
  * Centre region: the advisory exchange.
@@ -9,6 +15,13 @@ import type { SessionView } from "../api/client";
  * comparison, in the order they actually happened. Which step happens next is
  * decided by the backend, so this component renders whatever arrived rather
  * than assuming a sequence.
+ *
+ * **A question's status is not the same as whether it awaits a reply.** Whether
+ * the manager can still answer is a property of the round, which the backend
+ * reports as `awaiting_response`. Once a round is submitted, an unanswered
+ * question in it is an open unknown that stays visible, and the form for it
+ * goes away. Using the status alone would keep asking for input that has
+ * already been declined by omission.
  */
 export default function AdvisoryThread({
   session,
@@ -30,7 +43,11 @@ export default function AdvisoryThread({
     setSkipped(new Set());
   }, [session?.session_id]);
 
-  const pending = session?.questions.filter((q) => q.status === "unanswered") ?? [];
+  // Editable because the round is still open, not because the question is blank.
+  const awaitingReply = session?.questions.filter((q) => q.awaiting_response) ?? [];
+  const settled = session?.questions.filter((q) => !q.awaiting_response) ?? [];
+  const roundPending = session?.awaiting_answers ?? false;
+  const comparisonOutdated = session?.comparison_status === "outdated";
 
   const toggleSkip = (id: string) => {
     setSkipped((current) => {
@@ -108,16 +125,23 @@ export default function AdvisoryThread({
           <article className="block">
             <h3 className="block__title">Clarification</h3>
 
-            {session.questions
-              .filter((q) => q.status !== "unanswered")
-              .map((question) => (
-                <div className="question question--settled" key={question.id}>
-                  <p className="question__text">{question.question}</p>
-                  <span className={`tag tag--${question.status}`}>{question.status}</span>
-                </div>
-              ))}
+            {settled.map((question) => (
+              <div className="question question--settled" key={question.id}>
+                <p className="question__text">{question.question}</p>
+                <span className={`tag tag--${question.status}`}>
+                  {STATUS_LABEL[question.status]}
+                </span>
+              </div>
+            ))}
 
-            {pending.map((question) => (
+            {settled.some((q) => q.status === "unanswered") && (
+              <p className="muted small">
+                Questions marked <em>not answered</em> were part of a round you have already sent.
+                They stay here as open unknowns. Nothing further is needed from you.
+              </p>
+            )}
+
+            {awaitingReply.map((question) => (
               <div className="question" key={question.id}>
                 <p className="question__text">{question.question}</p>
                 <p className="question__why">{question.why_it_matters}</p>
@@ -142,11 +166,11 @@ export default function AdvisoryThread({
               </div>
             ))}
 
-            {pending.length > 0 && (
+            {roundPending && (
               <>
                 <p className="muted small">
                   Anything you leave blank stays an open unknown. It is carried into the advice
-                  rather than guessed at.
+                  rather than guessed at. Sending completes this round.
                 </p>
                 <button className="button button--primary" onClick={submit} disabled={busy !== null}>
                   Send answers
@@ -159,6 +183,14 @@ export default function AdvisoryThread({
         {session?.comparison && (
           <article className="block">
             <h3 className="block__title">Comparison</h3>
+
+            {comparisonOutdated && (
+              <div className="notice notice--stale" role="status">
+                <strong>Awaiting update.</strong> You have answered something since this comparison
+                was made, so it no longer reflects what the advisor knows. Select{" "}
+                <em>Continue</em> to refresh it before new advice is built on it.
+              </div>
+            )}
 
             {session.comparison.criteria_considered.length > 0 && (
               <p className="muted small">
@@ -195,7 +227,7 @@ export default function AdvisoryThread({
           </article>
         )}
 
-        {session && !busy && !session.awaiting_answers && !session.recommendation && (
+        {session && !busy && !roundPending && !session.recommendation && (
           <button className="button" onClick={onContinue}>
             Continue
           </button>

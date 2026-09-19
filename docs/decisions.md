@@ -703,6 +703,89 @@ was still issued and may still have been billed, so a run containing one has a f
 
 ---
 
+## D-035 — A recommendation requires a comparison that reflects the current answers
+
+**Status:** Confirmed · 2026-09-19
+
+`recommend` is offered only when a comparison exists **and** that comparison was made against the
+answers the session now holds. The rule is enforced three times over: in the permitted action set,
+in the validation boundary, and again at the commit boundary.
+
+**The defect.** `recommend` was available whenever `session.comparison` existed. A manager could
+answer a question, making the comparison out of date, and the advisor would build advice on the
+superseded analysis. The result would contradict the answer the manager had just given, with
+nothing in the output to show it.
+
+**Why three checks rather than one.** The permitted set stops the selector choosing it. Validation
+stops an output being accepted if the context is built anywhere else. The commit guard stops it
+being written even if a future caller assembles the context wrongly. Each is cheap, and the
+failure they prevent is advice that quietly contradicts the manager.
+
+**This is a data-consistency prerequisite, not a sequence.** Nothing here requires diagnosis,
+requires clarification, or fixes an order. It says only that advice may not rest on analysis the
+manager's answers have overtaken. A brief that needs no questions still goes compare then
+recommend in one turn, and a test pins that diagnosis remains optional.
+
+A recommendation that is already current is also not offered again, so nothing is recomputed when
+nothing has changed.
+
+---
+
+## D-036 — History is kept; currency is reported separately
+
+**Status:** Confirmed · 2026-09-19
+
+Every validated output stays in the session. Nothing is deleted when it goes stale. What changes
+is how it is described.
+
+- `comparison_status` and `recommendation_status` report `current` or `outdated`.
+- The API returns a **current** recommendation as `recommendation`. One the answers have overtaken
+  comes back as `previous_recommendation` instead.
+- `history` lists every accepted output with its status, including `superseded` for earlier
+  versions of the same step.
+
+**Why the API splits the field rather than adding a flag.** A flag can be ignored. If outdated
+advice arrived in the same field as current advice, any interface that forgot to check the flag
+would present stale advice as standing advice, which is the exact failure being prevented. Making
+the shape different means the mistake cannot be made by omission.
+
+**When a refresh fails or times out**, the previous recommendation is not shown as current. It is
+kept, labelled out of date, and the manager can continue from there. Losing it would be worse than
+labelling it: it is still the last thing the advisor actually concluded.
+
+---
+
+## D-037 — A pending round is not the same as an unanswered question
+
+**Status:** Confirmed · 2026-09-19
+
+Two things are tracked separately in the session:
+
+- **Submission.** Whether the manager has sent a clarification round. `round_is_pending()`.
+- **Answer status.** What became of each question: answered, skipped or unanswered.
+
+`answers_version` advances only when an answer's text or status actually changes. Resubmitting the
+same answers marks the round submitted and changes nothing else, so no result becomes stale and no
+recomputation follows. Whitespace around an answer is trimmed before comparing, so a trailing space
+is not new information.
+
+**The interface defect this fixes.** The advisory thread used `status === "unanswered"` to decide
+whether to show an editable field and a Send button. After the manager submitted a round having
+left one question blank, that question still looked like an outstanding request. It was not: the
+manager had already decided, by omission. The thread now uses `awaiting_response`, which is a
+property of the round. Unanswered questions from a submitted round remain visible as open unknowns,
+with a line saying nothing further is needed.
+
+The three statuses remain distinct throughout. Skipped is a decision the manager made, unanswered
+is one they did not make, and neither is an answer.
+
+**One consequence worth naming.** A turn where the only permitted action is `await_user` now makes
+no provider request at all. Asking the selector to choose from a set of one would spend a request
+to hear the only possible answer, which is precisely the recomputation an identical resubmission
+must not trigger.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

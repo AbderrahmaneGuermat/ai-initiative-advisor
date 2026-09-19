@@ -86,11 +86,32 @@ export interface ContextRequest {
   message: string;
 }
 
+export type AnswerStatus = "answered" | "skipped" | "unanswered";
+
+/** A result's currency. Superseded entries appear only in the history. */
+export type ResultStatus = "current" | "outdated" | "superseded";
+
 export interface Question {
   id: string;
   question: string;
   why_it_matters: string;
-  status: "answered" | "skipped" | "unanswered";
+  /** What the manager did with it. */
+  status: AnswerStatus;
+  round: number;
+  /**
+   * Whether this question is still waiting for a reply. Different from status:
+   * an unanswered question in a round already submitted is an open unknown,
+   * not a request for input.
+   */
+  awaiting_response: boolean;
+}
+
+export interface HistoryEntry {
+  action: string;
+  turn: number;
+  answers_version: number;
+  created_at: string;
+  status: ResultStatus;
 }
 
 export interface MissingEvidence {
@@ -156,7 +177,15 @@ export interface SessionView {
   questions: Question[];
   open_questions: { id: string; question: string; status: string }[];
   comparison: Comparison | null;
+  comparison_status: ResultStatus | null;
+  /** Only ever a current recommendation. */
   recommendation: Recommendation | null;
+  /** A recommendation the manager's later answers have overtaken. */
+  previous_recommendation: Recommendation | null;
+  recommendation_status: ResultStatus | null;
+  answers_version: number;
+  history: HistoryEntry[];
+  /** True while a clarification round is waiting to be submitted. */
   awaiting_answers: boolean;
   error: AdvisoryError | null;
   stopped_because: string | null;

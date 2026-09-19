@@ -17,7 +17,10 @@ const STANCE_LABEL: Record<Stance, string> = {
  */
 export default function AdvicePanel({ session }: { session: SessionView | null }) {
   const recommendation = session?.recommendation ?? null;
+  const outdated = session?.previous_recommendation ?? null;
   const openQuestions = session?.questions.filter((q) => q.status !== "answered") ?? [];
+  const shown = recommendation ?? outdated;
+  const isOutdated = recommendation === null && outdated !== null;
 
   return (
     <section className="panel panel--advice" aria-labelledby="advice-heading">
@@ -29,18 +32,29 @@ export default function AdvicePanel({ session }: { session: SessionView | null }
       </div>
 
       <div className="panel__body">
-        {!recommendation && (
+        {!shown && (
           <p className="muted">
             No recommendation yet. It appears once the advisor has compared the options.
           </p>
         )}
 
-        {recommendation && (
-          <>
-            <p className="advice__summary">{recommendation.summary}</p>
+        {isOutdated && (
+          <div className="notice notice--stale" role="status">
+            <strong>Out of date.</strong> You have answered something since this advice was
+            written, so it no longer reflects what the advisor knows. It is kept below for
+            reference and is not the current recommendation. Select <em>Continue</em> to
+            refresh it.
+          </div>
+        )}
 
-            <ol className="shortlist">
-              {recommendation.items.map((item) => {
+        {shown && (
+          <>
+            <p className={isOutdated ? "advice__summary advice__summary--stale" : "advice__summary"}>
+              {shown.summary}
+            </p>
+
+            <ol className={isOutdated ? "shortlist shortlist--stale" : "shortlist"}>
+              {shown.items.map((item) => {
                 const initiative = session?.brief.initiatives.find(
                   (i) => i.id === item.initiative_id,
                 );
@@ -68,11 +82,11 @@ export default function AdvicePanel({ session }: { session: SessionView | null }
               })}
             </ol>
 
-            {recommendation.first_actions.length > 0 && (
+            {shown.first_actions.length > 0 && (
               <div className="block">
                 <h3 className="block__title">First actions</h3>
                 <ol className="list">
-                  {recommendation.first_actions.map((action, index) => (
+                  {shown.first_actions.map((action, index) => (
                     <li key={index}>
                       {action.action} <em>{action.purpose}</em>
                     </li>
@@ -81,11 +95,11 @@ export default function AdvicePanel({ session }: { session: SessionView | null }
               </div>
             )}
 
-            {recommendation.risks.length > 0 && (
+            {shown.risks.length > 0 && (
               <div className="block">
                 <h3 className="block__title">Risks</h3>
                 <ul className="list">
-                  {recommendation.risks.map((risk, index) => (
+                  {shown.risks.map((risk, index) => (
                     <li key={index}>
                       {risk.description} <em>{risk.consequence_if_realised}</em>
                     </li>
@@ -96,7 +110,7 @@ export default function AdvicePanel({ session }: { session: SessionView | null }
 
             <div className="block">
               <h3 className="block__title">How far to trust this</h3>
-              <p>{recommendation.confidence_note}</p>
+              <p>{shown.confidence_note}</p>
             </div>
           </>
         )}
@@ -118,11 +132,11 @@ export default function AdvicePanel({ session }: { session: SessionView | null }
           </div>
         )}
 
-        {recommendation && recommendation.open_unknowns.length > 0 && (
+        {shown && shown.open_unknowns.length > 0 && (
           <div className="block">
             <h3 className="block__title">Other open unknowns</h3>
             <ul className="list">
-              {recommendation.open_unknowns.map((unknown, index) => (
+              {shown.open_unknowns.map((unknown, index) => (
                 <li key={index}>{unknown}</li>
               ))}
             </ul>

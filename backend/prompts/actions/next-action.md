@@ -1,6 +1,6 @@
 ---
 id: action.next
-version: "1.1.0"
+version: "1.2.0"
 role: Choose what the advisor does next
 inputs:
   - the manager's brief
@@ -12,6 +12,7 @@ outputs: WireNextAction
 constraints:
   - Choose only from the permitted actions supplied
   - Do not repeat an action whose output already exists unless something changed
+  - A recommendation needs a comparison that reflects the manager's latest answers
   - Diagnose only before a comparison exists, and only if it would help
   - Give one short sentence of reasoning
 ---
@@ -54,7 +55,16 @@ current stances if a recommendation exists. Read it. Deciding what should happen
 of things that have happened is the whole job, and the substance is there for that reason.
 
 `still_current` on a comparison says whether the manager has told you anything since it was made.
-When it is true, comparing again would produce the same analysis at the same cost.
+
+- **True.** The comparison reflects what is known. Comparing again would produce the same analysis
+  at the same cost, so it is not offered.
+- **False.** The manager has answered something since, and the comparison no longer reflects what
+  they have said. **Refresh it before recommending.** Advice built on an overtaken analysis would
+  quietly contradict the very answer the manager just gave, so `recommend` is not offered until
+  the comparison is refreshed. Choose `compare`.
+
+The same field appears on a recommendation. A recommendation that is already current is not
+offered again.
 
 # How to decide
 

@@ -835,3 +835,106 @@ cost claim.
 
 The four findings from the first live run are fixed and covered by tests, and a second live run
 confirms all four in practice. Committed and pushed. The interface remains unvalidated by use.
+
+---
+
+## 2026-09-19 — Prompt [008](prompts/008-state-consistency.md), state consistency
+
+**Instruction:** Fix three state-consistency defects before adding features or spending on further
+live runs. No paid live run this iteration.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+### What was wrong
+
+**1. A recommendation could rest on an overtaken comparison.** `permitted_actions()` offered
+`recommend` whenever `session.comparison` existed, with no check that the comparison still
+reflected the manager's answers. A manager who answered a question after a comparison was made
+would get advice built on the analysis their answer had just superseded.
+
+**2. Outdated results were indistinguishable from current ones.** The session view returned the
+stored recommendation with nothing to say whether it was still valid. If a refresh failed, the
+interface would present the superseded advice as the standing recommendation.
+
+**3. The interface confused a pending round with an unanswered question.** `AdvisoryThread` used
+`status === "unanswered"` to decide whether to show an editable field and the Send button. After
+the manager submitted a round leaving one question blank, that question kept asking for input the
+manager had already declined to give by omission.
+
+Related, and fixed with them: `answers_version` advanced on every submission, so resubmitting
+identical answers invalidated a perfectly current comparison and recommendation.
+
+### What was done
+
+**Prerequisite, enforced three times.** `recommend` is offered only when the comparison is current.
+The validation boundary rejects a recommendation whose context says the comparison is stale, and
+the commit boundary refuses to write one regardless of how the context was built. Recorded as
+D-035. The selector prompt, now at version 1.2.0, explains that a `still_current: false` comparison
+must be refreshed before recommending and that `compare` is the action for it.
+
+**Diagnosis stays optional and the workflow stays adaptive.** The new rule mentions no order. A
+test pins that a session can go compare then recommend in a single turn with no diagnosis at all.
+
+**History kept, currency reported.** `comparison_status` and `recommendation_status` report current
+or outdated. A current recommendation comes back as `recommendation`; one the answers have overtaken
+comes back as `previous_recommendation`, so an interface cannot show it as standing advice by
+forgetting to check a flag. A `history` list reports every accepted output with its status,
+including `superseded`. Recorded as D-036.
+
+**Submission separated from change.** `record_answers` returns whether anything actually changed and
+advances `answers_version` only then, comparing answer text after trimming whitespace. Round
+submission is tracked separately, by `responded_rounds`. Recorded as D-037.
+
+**The interface uses the round, not the status.** `awaiting_response` per question drives the form
+and the Send button. Unanswered questions from a submitted round stay visible as open unknowns with
+a line saying nothing further is needed. The advice panel labels an outdated recommendation clearly,
+dims it, and points at Continue. The comparison block does the same when it is awaiting an update.
+
+**A turn with one possible action makes no request.** When the only permitted action is
+`await_user`, the selector is not called. Spending a request to hear the only possible answer was
+the remaining path by which an identical resubmission could still cost money.
+
+### Checks performed
+
+All deterministic. **No live run in this iteration, as instructed.**
+
+| Check | Result |
+|---|---|
+| `pytest backend` | **168 passed**, 0 failed (was 150) |
+| Frontend `tsc --noEmit` | Passes |
+| `npm run build` | Passes |
+| A genuinely new answer makes the comparison outdated | Passes |
+| Recommendation refused while the comparison is outdated, in permitted actions | Passes |
+| Refused at the validation boundary | Passes |
+| Refused at the commit boundary, independently | Passes |
+| Refreshing the comparison makes recommending available again | Passes |
+| Diagnosis remains optional under the new prerequisite | Passes |
+| Continue reuses a current comparison, two requests not three | Passes |
+| Identical resubmission: nothing invalidated, no version bump | Passes |
+| Identical resubmission: **zero provider requests** | Passes |
+| Trailing whitespace is not a new answer | Passes |
+| Answering a previously skipped question does count as a change | Passes |
+| Failed refresh keeps history and does not present stale advice as current | Passes |
+| Timed-out refresh behaves the same | Passes |
+| One answer, one skip, one blank completes the round with all three statuses | Passes |
+| The API view separates answer status from awaiting a reply | Passes |
+| The API does not serve an outdated recommendation as current, end to end | Passes |
+
+### Limitations
+
+1. **Visual verification is still pending.** No browser interaction is available in this
+   environment. The frontend type-checks and builds, and the state it renders is covered by tests
+   at the API level, but nobody has looked at the rendered page. The outdated-advice banner, the
+   dimmed shortlist and the settled-question list have not been seen.
+2. **No live run.** The selector prompt changed and its effect on the model's choices is untested
+   against the real service. Whether the advisor now refreshes a stale comparison when told to is a
+   prompt behaviour, and only a live run can show it. The application-level guarantee does not
+   depend on it: if the selector chooses wrongly, the choice is rejected.
+3. **Staleness is tracked at session granularity.** Any answer change marks the whole comparison
+   outdated, even one that could not affect it. That is the conservative direction and is cheap to
+   refine later if it proves annoying.
+
+### Status at end of entry
+
+The three state-consistency defects are fixed, each covered by deterministic tests. Committed and
+pushed. Stopping for visual review.
