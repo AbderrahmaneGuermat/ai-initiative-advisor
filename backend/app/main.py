@@ -1,8 +1,8 @@
 """FastAPI application entry point.
 
-Skeleton stage. This module wires up the app and mounts the router. It contains
-no business logic, and it will not gain any: under the method this project
-follows, advisory judgement lives in prompt files rather than in Python. See
+This module wires up the app and mounts the router. It contains no business
+logic: under the method this project follows, advisory judgement lives in the
+runtime prompt files in backend/prompts/ rather than in Python. See
 docs/architecture.md.
 """
 
@@ -19,8 +19,8 @@ app = FastAPI(
     version=APP_VERSION,
     description=(
         "Backend for a strategy-consulting application that helps managers prioritise "
-        "enterprise AI initiatives. Skeleton stage: the health endpoint is the only "
-        "working capability."
+        "enterprise AI initiatives. Runs a bounded, prompt-directed advisory loop "
+        "against OpenAI. Sessions are held in memory only."
     ),
 )
 

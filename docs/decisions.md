@@ -1032,3 +1032,24 @@ back, with any half-written answers intact. The previous session keeps its URL.
 
 **No new capability.** No persistence, no revision history, no backend change. Starting a session
 is still a separate click, and nothing in the editor calls the backend.
+
+## D-048 — Correction to D-045: the advisor is asked for an order
+
+**Status:** Confirmed · 2026-09-19 · corrects the rationale of D-045; the interface is unchanged
+
+D-045 said the recommendation carries no priority and that array order is not a claim the model was
+asked to make. **That was wrong.** `backend/prompts/actions/recommend.md` says "Order carries
+priority. The first item is what you would do first", and the `Recommendation` contract documents
+the same.
+
+What is true, and what the interface does:
+
+- The order is **requested** from the model, but **no field states it and nothing validates it**.
+  A reordered list would pass validation.
+- The interface **keeps** that order within each group (recommended, then the rest) and in the
+  reasoning view, but does not add a "Recommended first" label or rank numbers. A label would assert
+  more than the application can check.
+
+D-045 is left as written. The comments in `frontend/src/lookup.ts` and
+`frontend/src/components/DecisionOverview.tsx`, and section 2 of [ui-ux.md](ui-ux.md), were
+corrected to match. No behaviour changed.

@@ -32,8 +32,9 @@ chose to send, and why: a subset narrow enough that the question does not arise.
    strict-schema helper without emitting keywords outside that subset. This runs
    offline and proves nothing about the service.
 3. *Actual service acceptance* is established only when OpenAI accepts a request
-   carrying one of these schemas. **That has not yet been observed.** No live
-   request has been made.
+   carrying one of these schemas. That was first observed in the live runs of
+   2026-09-18 recorded in docs/worklog.md (prompt 007), for gpt-5-mini. It is
+   evidence for that model and those schemas, not a general guarantee.
 
 Output crosses from wire to application contract in :mod:`app.core.validation`,
 where the real rules run. **The API cannot enforce our rules, and this layer

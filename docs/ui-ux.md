@@ -2,9 +2,11 @@
 
 This document explains the interface decisions for assessment part 3. It describes the interface
 as built after prompts [013](prompts/013-visual-redesign.md),
-[014](prompts/014-visual-refinement.md) and [015](prompts/015-final-refinement.md). The visual reference was a static design preview with
-fictional content; the application renders real session data in its proportions. Earlier
-iterations and the reasons they changed are in the [worklog](worklog.md).
+[014](prompts/014-visual-refinement.md) and [015](prompts/015-final-refinement.md). The visual
+reference was a static design preview whose copy was condensed from the fictional Larkfield
+example. It was not advisor output, and not an additional live run. The application renders real
+session data in its proportions. Earlier iterations and the reasons they changed are in the
+[worklog](worklog.md).
 
 The reader is an operations or general manager deciding which AI initiative to fund first. They are
 not a data scientist. They have a board meeting coming, limited time, and no reason to trust a tool
@@ -56,10 +58,13 @@ green primary button. Once a session exists it becomes a plain button, so "See f
 the only primary action beside the recommendation. It stays at the top of the sidebar, so starting
 again is always easy to find.
 
-**No ranking is invented.** The recommendation is a list, and array order is not a priority. A
-"Recommended first" label would claim an ordering the advisor never stated, so it does not appear.
-Several recommended initiatives all get lead cards. None recommended produces an explicit
-"Nothing is recommended yet" card rather than promoting the least bad option.
+**Order is kept, but not turned into a label.** The recommend prompt asks the model to list the
+initiatives in priority order, and the interface keeps that order within each group. It does not
+add a "Recommended first" label: no field states the priority and nothing validates it, so a label
+would assert more than the application can check. Several recommended initiatives all get lead
+cards. None recommended produces an explicit "Nothing is recommended yet" card rather than
+promoting the least bad option. (Decision D-048 corrects the earlier rationale in D-045, which said
+the model was never asked for an order. It was.)
 
 ## 3. Progressive disclosure
 
@@ -203,7 +208,8 @@ Colour, type and geometry are tokens in `frontend/src/styles/tokens.css`.
   lands on new content, show no ring because they are not controls.
 - Every disclosure is a button or `<details>` with its state exposed (`aria-expanded`), including
   "See first actions", "Evidence & sources", "Show all", "Show context", "What this means" and the
-  brief editor toggle. The primary action and the editor were verified by keyboard alone.
+  brief editor toggle. The primary action and the editor were verified with scripted keyboard
+  input (Playwright), not by a person.
 - Tab order follows the page: header, sidebar controls, then the main column.
 - A polite live region announces when work starts, when questions arrive and when advice is ready.
 - Status is never carried by colour alone.
@@ -212,9 +218,13 @@ Colour, type and geometry are tokens in `frontend/src/styles/tokens.css`.
 
 - **No persistence.** A reopened URL works only while the backend process holds the session.
 - **No export** of the decision brief.
+- **No revision within a session.** A changed brief needs a new session (section 7).
+- **No offline mode.** Every advisory step needs a live model. Prepared states used in browser
+  checks were review tooling, not a product feature.
 - **Checked in one browser engine** (Chromium, through Playwright) at three viewports. Not tested
   with a screen reader.
-- **Real content is longer than the reference's.** The reference used short, invented copy
-  ("0.7 FTE", "About €150,000"). The application shows the brief's actual values and the model's
-  actual sentences, so its cards and sidebar rows are taller. No shorter values are invented or
+- **Real content is longer than the reference's.** The reference used short copy condensed from
+  the fictional example ("0.7 FTE", "About €150,000"), not advisor output. The application shows
+  the brief's actual values and the model's actual sentences, so its cards and sidebar rows are
+  taller. No shorter values are invented or
   extracted to imitate it.

@@ -4,8 +4,8 @@ This directory is the chronological record of the instructions that produced thi
 Each file holds one development instruction, saved verbatim, before it was acted on.
 
 These are **development prompts**. They are not the prompts the application executes. The
-application's runtime prompts will live in `backend/prompts/` once implementation begins, and the
-two are never mixed.
+application's runtime prompts are in [`backend/prompts/`](../../backend/prompts/), and the two are
+never mixed.
 
 ## Conventions
 
@@ -15,6 +15,10 @@ two are never mixed.
 - Files are never edited after the fact. A correction is a new entry.
 - Nothing in this directory is reconstructed, summarised or invented. If an instruction was not
   given, there is no file for it.
+- Not every instruction given has a file. A few short operational instructions, such as running
+  a browser walkthrough or resuming after an interruption, were deliberately not recorded at the
+  project owner's request. Where their work produced results, those are recorded in
+  [../worklog.md](../worklog.md).
 - The outcome of each prompt is recorded separately in [../worklog.md](../worklog.md), which
   references the prompt by number.
 
@@ -37,6 +41,7 @@ two are never mixed.
 | 013 | [013-visual-redesign.md](013-visual-redesign.md) | Implement the approved visual redesign with exact tokens, cover every state, verify at three viewports, and document the interface rationale |
 | 014 | [014-visual-refinement.md](014-visual-refinement.md) | Refine the redesign against the attached reference: hierarchy, a simpler recommended card, a compact sidebar, mobile reading order, readable references in prose, and a corrected prepared screenshot |
 | 015 | [015-final-refinement.md](015-final-refinement.md) | Move the brief editor into the main column as a draft, make the restored-session notice discreet, and complete a final usability and verification pass |
+| 016 | [016-submission-documentation.md](016-submission-documentation.md) | Bring the documentation into line with the completed application for submission, add a reviewer guide, and correct outdated or overstated claims |
 
 ## Attribution
 

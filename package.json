@@ -2,7 +2,7 @@
   "name": "ai-initiative-advisor",
   "version": "0.0.1",
   "private": true,
-  "description": "Strategy-consulting application for managers, built with BlueCallom's Intelligence-over-Code method. Skeleton stage.",
+  "description": "Strategy-consulting application for managers that prioritises enterprise AI initiatives, built following BlueCallom's Intelligence-over-Code method.",
   "workspaces": [
     "frontend"
   ],

@@ -310,9 +310,10 @@ def _engine() -> AdvisoryEngine:
 async def start_session(request: StartSessionRequest) -> dict[str, Any]:
     """Create a session from a brief and run the first turn.
 
-    Editing the brief later starts a **new** session rather than revising this
-    one. Revision is not implemented, and pretending otherwise would present
-    fresh advice as though it were a considered change of mind.
+    A brief changed later is never used to revise this session. The interface
+    withdraws the old advice and the manager starts a **new** session
+    explicitly. Revision is not implemented, and pretending otherwise would
+    present fresh advice as though it were a considered change of mind.
     """
     engine = _engine()
     session = store.create(request.brief)

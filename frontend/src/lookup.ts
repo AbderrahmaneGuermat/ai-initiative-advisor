@@ -155,13 +155,13 @@ export function splitReferences(text: string, index: Map<string, InlineRef>): Se
 }
 
 /**
- * Whether the advice establishes that one option comes before the others.
+ * Whether the interface labels one option as coming before the others.
  *
- * It does not. The contract carries a disposition per option and no priority
- * field, and array order is not a claim the model was asked to make, so
- * treating position as rank would be inventing a judgement. Kept as a named
- * function so the reasoning is visible where a future priority field would be
- * read instead.
+ * It does not. The recommend prompt and the backend contract say list order
+ * carries priority, and the interface keeps that order within each group. But
+ * nothing validates the order, and there is no field that states it, so the
+ * interface does not turn position into a "Recommended first" label. See
+ * docs/decisions.md, D-048, which corrects the rationale first given in D-045.
  */
 export function priorityIsExplicit(): boolean {
   return false;

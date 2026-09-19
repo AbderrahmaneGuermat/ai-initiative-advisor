@@ -49,16 +49,16 @@ class Settings(BaseSettings):
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # --- Model access -----------------------------------------------------
-    # Unset until the provider decision is made. Nothing in the skeleton reads
-    # a key, and no model call is implemented.
+    # The provider is OpenAI (docs/decisions.md). Read from .env or the shell.
+    # The key is never returned by an endpoint, logged, or sent to the browser.
     model_provider: str | None = None
     model_name: str | None = None
     model_api_key: str | None = None
 
-    # When true, the application replays recorded fixture responses instead of
-    # calling a provider. Fixture output is labelled as sample data in the
-    # interface, and a failed live call is never silently replaced by a
-    # fixture. See docs/decisions.md, D-009.
+    # Reserved for an offline replay mode that is NOT implemented. The flag is
+    # read but nothing acts on it. If it is ever built, replayed output must be
+    # labelled as sample data and must never replace a failed live call. See
+    # docs/decisions.md, D-009.
     offline_fixture_mode: bool = False
 
     # --- Request shaping --------------------------------------------------

@@ -1,189 +1,161 @@
 # Architecture
 
-Status: **first advisory flow working.** OpenAI integration, runtime prompts, the bounded loop and the validation boundary are implemented and tested against deterministic doubles. Revision is validated but not offered; persistence, exports and offline replay are not implemented.
-Revised following the design review in [prompts/002-design-review-and-skeleton.md](prompts/002-design-review-and-skeleton.md).
+Status: **implemented, as of prompt [016](prompts/016-submission-documentation.md).** OpenAI
+integration, runtime prompts, the bounded advisory loop, the validation boundary, in-memory
+sessions and the interface are built and tested. Not implemented: revision after a constraint
+change, persistence across restarts, export, and offline replay. Where an earlier design proposed
+one of these, it is marked below as **not implemented**.
 
 The organising constraint is BlueCallom's stated hierarchy, that the prompt carries the
-intelligence and code carries the mechanics. See [requirements.md](requirements.md), sections B1
-to B4. The architecture below exists to make that separation visible and auditable rather than
-merely claimed, while keeping the controls that make the application safe to run.
+intelligence and code is its subordinate. See [requirements.md](requirements.md), section B. The
+architecture below exists to make that separation visible and auditable, while keeping the
+controls that make the application safe to run.
 
 ---
 
 ## 1. Shape of the system
 
-Two processes, one HTTP boundary.
+Two local processes, one HTTP boundary.
 
 ```
-┌─────────────────────────────┐        ┌──────────────────────────────────────────┐
-│  React + Vite  (port 5173)  │        │  FastAPI  (port 8000)                    │
-│                             │  JSON  │                                          │
-│  Context panel              │ ─────► │  ┌────────────────────────────────────┐  │
-│  Advisory thread            │ ◄───── │  │ Advisory loop (bounded)            │  │
-│  Comparison + recommendation│  proxy │  │  asks the prompt what to do next,  │  │
-│                             │  /api  │  │  enforces what is permitted        │  │
-└─────────────────────────────┘        │  └──────┬──────────────────┬──────────┘  │
-                                       │         │                  │             │
-                                       │  ┌──────▼───────┐   ┌──────▼──────────┐  │
-                                       │  │ prompts/*.md │   │ GUARDS          │  │
-                                       │  │ decide       │   │ schema          │  │
-                                       │  │  next action │   │ limits          │  │
-                                       │  │  questions   │   │ state integrity │  │
-                                       │  │  comparison  │   │ action contract │  │
-                                       │  │  advice      │   └─────────────────┘  │
-                                       │  └──────┬───────┘                        │
-                                       │  ┌──────▼───────┐  ┌──────────────────┐  │
-                                       │  │ model client │  │ session store    │  │
-                                       │  └──────┬───────┘  │ export renderer  │  │
-                                       └─────────┼──────────┴──────────────────┘  │
-                                                 ▼ provider API  (or labelled fixtures)
+┌──────────────────────────────┐        ┌──────────────────────────────────────────┐
+│  React + Vite  (port 5173)   │        │  FastAPI  (127.0.0.1:8000)               │
+│                              │  JSON  │                                          │
+│  Context sidebar             │ ─────► │  ┌────────────────────────────────────┐  │
+│  Main column:                │ ◄───── │  │ Advisory loop (bounded, per turn)  │  │
+│   brief editor (draft)       │  proxy │  │  asks the selector prompt what to  │  │
+│   clarification round        │  /api  │  │  do next; enforces what is allowed │  │
+│   decision overview          │        │  └──────┬──────────────────┬──────────┘  │
+│   reasoning & sources        │        │         │                  │             │
+└──────────────────────────────┘        │  ┌──────▼───────┐   ┌──────▼──────────┐  │
+                                        │  │ prompts/*.md │   │ Guards          │  │
+                                        │  │ decide:      │   │ schema          │  │
+                                        │  │  next action │   │ limits          │  │
+                                        │  │  diagnosis   │   │ state integrity │  │
+                                        │  │  questions   │   │ action contract │  │
+                                        │  │  comparison  │   └─────────────────┘  │
+                                        │  │  advice      │                        │
+                                        │  └──────┬───────┘                        │
+                                        │  ┌──────▼───────┐  ┌──────────────────┐  │
+                                        │  │ model client │  │ session store    │  │
+                                        │  │ (OpenAI)     │  │ (in memory)      │  │
+                                        │  └──────┬───────┘  └──────────────────┘  │
+                                        └─────────┼────────────────────────────────┘
+                                                  ▼ OpenAI Responses API
 ```
 
-The property that matters: the boxes containing business judgement are Markdown files. A
-reviewer can read what the application thinks by reading `backend/prompts/`, without reading
-Python. The boxes containing enforcement are Python, and the model cannot talk its way past them.
+The boxes containing business judgement are Markdown files. A reviewer can read what the
+application thinks by reading `backend/prompts/`, without reading Python. The boxes containing
+enforcement are Python, and the model cannot talk its way past them.
 
 ---
 
 ## 2. Orchestration: a bounded advisory loop
 
-**There is no fixed five-step pipeline.** Corrected at the project owner's direction.
-
-Diagnosis, clarification, comparison, recommendation and revision are advisory *responsibilities*,
-each with a prompt and a place in the interface. Which one happens next is a judgement about the
-manager's situation, and under BlueCallom's hierarchy that judgement belongs in a prompt.
+**There is no fixed pipeline.** Diagnosis, clarification, comparison and recommendation are
+advisory responsibilities, each with its own prompt. Which one happens next is a judgement about
+the manager's situation, and it is made by a prompt.
 
 Each turn works like this:
 
-1. Code assembles the current session state and calls the **next-action prompt**.
-2. The prompt returns a chosen action, drawn from a fixed set, with its reasoning.
-3. Code validates that choice against the action contract. An unrecognised action is rejected.
-4. Code runs the prompt for that action, validates its output against a schema, and commits the
-   result to session state through a legal transition.
-5. The loop continues or stops. Code enforces the stop conditions.
+1. Code assembles the current session state and works out which actions are currently permitted.
+2. The **selector prompt** (`actions/next-action.md`) chooses one of them, with one sentence of
+   reasoning.
+3. Code validates the choice against the permitted set.
+4. Code runs the prompt for that action, validates its output, and commits it to session state.
+5. The loop continues until the selector chooses `await_user`, a question round is opened, or a
+   limit is reached.
 
 ### The action contract
 
-Every permitted action, the prompt that performs it, and the contract its output must satisfy.
-This table is the single source of truth. An earlier revision listed a `diagnose.md` prompt that
-had no corresponding action, which meant the prompt could never have been reached. `diagnose` is
-now a permitted action in its own right. See decision D-017.
-
-| Action | Chosen when | Prompt | Output contract |
-|---|---|---|---|
-| `diagnose` | The brief needs reading before anything else: gaps, contradictions and unstated assumptions | `actions/diagnose.md` | `Diagnosis` |
-| `request_context` | Essential inputs are absent entirely | `actions/request-context.md` | `ContextRequest` |
-| `ask_clarification` | Up to three decision-critical questions would change the advice | `actions/clarify.md` | `ClarificationBatch` |
-| `compare` | Enough is known to set out the alternatives honestly | `actions/compare.md` | `Comparison` |
-| `recommend` | A comparison exists and a justified choice can be defended | `actions/recommend.md` | `Recommendation` |
-| `revise` | A constraint changed after advice was given | `actions/revise.md` | `Revision` |
-| `await_user` | Nothing useful can be done until the manager responds | none | `AwaitUser` |
+| Action | Chosen when | Prompt | Output contract | State |
+|---|---|---|---|---|
+| `diagnose` | The brief needs reading first: gaps, contradictions, unstated assumptions. Only before a comparison exists | `actions/diagnose.md` | `Diagnosis` | Implemented |
+| `request_context` | The brief is too thin to work with at all | `actions/request-context.md` | `ContextRequest` | Implemented |
+| `ask_clarification` | Up to three questions would change the advice. One round per session by default | `actions/clarify.md` | `ClarificationBatch` | Implemented |
+| `compare` | Enough is known to set out the alternatives honestly | `actions/compare.md` | `Comparison` | Implemented |
+| `recommend` | A comparison reflecting the latest answers exists | `actions/recommend.md` | `Recommendation` | Implemented |
+| `await_user` | Nothing useful can be done until the manager responds | none | none | Implemented |
+| `revise` | A constraint changed after advice was given | none | `Revision` | **Not implemented.** Contract validated in tests; withheld from the selector; no prompt; no interface |
 
 The mapping is declared once in code, as `ACTION_OUTPUT_CONTRACTS` in
-`backend/app/models/actions.py`, so the action set and the output contracts cannot drift apart.
-`await_user` is the one action with no prompt: it ends the turn and hands control back, so there
-is no model output to validate.
-
-A well-specified brief may reach `compare` immediately. A vague one may clarify twice. The order
-is an outcome, not a schedule.
+`backend/app/models/actions.py`. The set the selector may choose from is `SUPPORTED_ACTIONS` in
+`backend/app/core/advisory.py`, narrowed further each turn by what the session state allows: for
+example, `recommend` is not offered before a comparison exists, and a thin brief is only offered
+`request_context`.
 
 ### Why the guards are not a violation of the method
 
-[requirements.md](requirements.md) B7 records a verified fact: the BlueCallom source page says
-nothing about validation, schemas, limits or control. So these are our engineering judgement, and
-we present them as such rather than attributing them to the method.
-
-They are compatible with the hierarchy because they decide nothing. No guard has an opinion about
-which initiative is better. They enforce that the loop terminates, that state stays consistent,
-that output matches its contract, and that only declared actions run. That is the "precision" case
-BlueCallom explicitly reserves for code when the page states that IoC "has nothing to do with
-'No-Code'."
-
-The inverse error is the real risk. Moving schema enforcement or iteration caps into prose, to
-make the Python smaller, would produce an application that cannot be trusted to stop.
+The BlueCallom page says nothing about validation, limits or state (see
+[requirements.md](requirements.md), B7). These controls are our engineering choice, and we present
+them as such. They are compatible with the hierarchy because they decide nothing about which
+initiative is better. They make sure the loop stops, state stays consistent, output matches its
+contract, and only permitted actions run.
 
 ---
 
 ## 3. Comparison model
 
-**No weighted numerical scoring in the MVP.** Removed at the project owner's direction.
+**No weighted numerical scoring.** Each initiative carries five separately labelled categories:
+stated facts, assumptions, missing evidence, feasibility constraints and trade-offs. Definitions
+are in [requirements.md](requirements.md), C5.
 
-Each initiative in a comparison carries five separately labelled categories: stated facts,
-assumptions, missing evidence, feasibility constraints, and trade-offs. Definitions are in
-[requirements.md](requirements.md), C5.
-
-Two consequences for the code:
-
-- The contract gives each category its own field, so a producer has to choose one when writing a
-  claim, and a reader can see which was chosen. **This is structural, not epistemic.** It does not
-  establish that a statement placed under stated facts is true, nor that something filed as a fact
-  was not actually an assumption. A schema cannot tell the difference. What it gives is a
-  consistent place to look and something a reviewer or a later check can act on.
-- **There is no numeric default anywhere.** A missing value stays missing. The contract has no
-  "unknown becomes zero" path, because a zero would be indistinguishable from a measured low, and
-  any later ranking would silently punish the option we know least about.
-
-Claims that rest on the manager's input carry lightweight source references naming the brief field
-or clarification answer they came from. Referential checks confirm that a referenced identifier
-exists. **They do not confirm that the cited input supports the claim.** Traceability makes a
-wrong claim findable; it does not make a claim right. See decision D-016.
-
-If scoring is introduced later it arrives with documented scales, documented weights and a written
-statement of limitations. It will not appear implicitly.
+- Each category is its own field, so a producer has to choose one. **This is structural, not
+  epistemic**: a schema cannot tell a fact from an assumption filed as one.
+- **There is no numeric default anywhere.** A missing value stays missing.
+- Stated facts cite the brief field or answered question they rest on. Referential checks confirm
+  that the cited identifier exists, not that it supports the claim (decision D-016).
+- The recommend prompt and the `Recommendation` contract say **list order carries priority**. No
+  field states it and nothing validates it. The interface keeps the order within each group but
+  does not label any item "first" (decision D-048).
 
 ---
 
 ## 4. Directory layout
 
-Implemented parts are marked. Everything else is planned.
-
 ```
 .
-├── README.md                          ✅
-├── .env.example                       ✅  placeholders only
-├── .gitignore                         ✅
-├── package.json                       ✅  root: npm run dev
-├── scripts/dev-backend.mjs            ✅  finds the venv interpreter per platform
-├── docs/                              ✅
-│   ├── requirements.md · architecture.md · decisions.md · worklog.md
-│   ├── ui-ux.md                       ✅  interface rationale
-│   └── prompts/                       ✅  DEVELOPMENT prompt record, not runtime
+├── README.md
+├── .env.example                       placeholders only; .env is git-ignored
+├── package.json                       root scripts: dev, build, check:frontend
+├── scripts/dev-backend.mjs            finds the venv interpreter, starts Uvicorn
+├── docs/
+│   ├── reviewer-guide.md              the assessor's route through the project
+│   ├── requirements.md · architecture.md · decisions.md · worklog.md · ui-ux.md
+│   └── prompts/                       DEVELOPMENT prompt record, verbatim
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                    ✅  FastAPI app, CORS, router mount
-│   │   ├── config.py                  ✅  env loading, no secrets in code
-│   │   ├── api/routes.py              ✅  health only so far
+│   │   ├── main.py                    FastAPI app, CORS, router mount
+│   │   ├── config.py                  settings from .env; no secrets in code
+│   │   ├── api/routes.py              health, diagnostics, scenario, sessions, answers, continue, trace
 │   │   ├── core/
-│   │   │   ├── advisory.py            ✅  bounded loop; runs what the prompt chose
-│   │   │   ├── assemble.py            ✅  builds inputs; fences manager text
-│   │   │   ├── prompt_loader.py       ✅  reads prompts/ per call, hashes contents
-│   │   │   ├── model_client.py        ✅  OpenAI adapter, named failures
-│   │   │   ├── limits.py              ✅  action, request, size and time ceilings
-│   │   │   └── validation.py          ✅  the single boundary before state
-│   │   ├── models/                    ✅  declared contracts, tested
-│   │   │   ├── common.py              ✅  identifiers, source references, strict base
-│   │   │   ├── brief.py               ✅  objectives, constraints, initiatives
-│   │   │   ├── clarification.py       ✅  questions, answered / skipped / unanswered
-│   │   │   ├── comparison.py          ✅  the five categories
-│   │   │   ├── recommendation.py      ✅  advice and revision
-│   │   │   ├── actions.py             ✅  permitted actions, action-to-output map
-│   │   │   └── references.py          ✅  referential integrity only
-│   │   ├── data/                      ✅  one fictional worked example, hand-authored
-│   │   ├── store/session.py           ⬜  append-only session history
-│   │   ├── export/render.py           ⬜  Markdown / JSON brief
-│   │   └── data/scenarios/            ⬜  fictional sample scenarios
-│   ├── prompts/                       ✅  RUNTIME prompts: the product's intelligence
-│   ├── fixtures/                      ⬜  recorded responses, labelled as sample data
-│   ├── tests/                         ⬜
-│   └── requirements.txt               ✅
+│   │   │   ├── advisory.py            the bounded loop; runs what the selector chose
+│   │   │   ├── assemble.py            builds prompt inputs; fences manager text as case material
+│   │   │   ├── prompt_loader.py       reads prompts/ on every call; hashes contents
+│   │   │   ├── model_client.py        OpenAI adapter; named failures; no hidden retries
+│   │   │   ├── configuration.py       local configuration presence, never authentication
+│   │   │   ├── limits.py              per-turn action, request, size and time ceilings
+│   │   │   └── validation.py          the single boundary before session state
+│   │   ├── models/                    application contracts, plus wire.py for the API schema
+│   │   ├── store/session.py           in-memory sessions, records, attempts, currency
+│   │   └── data/                      the fictional scenario and hand-written contract examples
+│   ├── prompts/                       RUNTIME prompts: the product's judgement
+│   │   ├── system/advisor.md
+│   │   ├── actions/ next-action · diagnose · request-context · clarify · compare · recommend
+│   │   └── support/repair-output.md
+│   ├── fixtures/                      empty placeholder; offline replay is not implemented
+│   ├── tests/                         backend tests, deterministic doubles, no network
+│   └── requirements.txt
 └── frontend/
-    ├── index.html · package.json · vite.config.ts · tsconfig.json   ✅
+    ├── package.json · vite.config.ts · tsconfig.json · index.html
+    ├── tests/                         node:test for reference rendering and draft editing
     └── src/
-        ├── main.tsx · App.tsx         ✅  shell, session state, reopening by URL
-        ├── api/client.ts              ✅  typed calls to the backend
-        ├── lookup.ts                  ✅  identifiers to readable names
-        ├── components/                ✅  header, sidebar, clarification, overview, reasoning
-        └── styles/                    ✅  design tokens and layout
+        ├── App.tsx                    shell: session state, editor state, reopening by URL
+        ├── api/client.ts              typed calls to the backend
+        ├── brief.ts                   draft comparison: when advice stops applying
+        ├── lookup.ts                  identifiers to readable labels
+        ├── components/                header, sidebar, brief editor, clarification, overview, reasoning
+        └── styles/                    design tokens and layout
 ```
 
 `docs/prompts/` and `backend/prompts/` are kept apart deliberately. The first records how the
@@ -193,47 +165,53 @@ software was built. The second is the software.
 
 ## 5. Responsibilities
 
-### 5.1 Runtime prompts — `backend/prompts/` (not yet written)
+### 5.1 Runtime prompts — `backend/prompts/`
 
 | Prompt | Owns |
 |---|---|
-| `system/advisor.md` | Persona, tone, refusal behaviour, the standing rule that an unknown is never presented as a finding |
-| `actions/next-action.md` | Choosing the next advisory action from the permitted set, with reasoning |
-| `actions/diagnose.md` | Naming gaps, contradictions and unstated assumptions in the brief |
-| `actions/request-context.md` | Stating which essential inputs are missing before anything else can proceed |
-| `actions/clarify.md` | Choosing at most three questions that would actually change the advice |
-| `actions/compare.md` | Deriving relevant criteria; producing the five-category comparison |
-| `actions/recommend.md` | A justified choice, traceable to facts and labelled assumptions, with risks and first moves |
-| `actions/revise.md` | Re-evaluating after a change and explaining what moved, what held, and why |
-| `support/repair-output.md` | Restating a malformed response so it satisfies its schema |
+| `system/advisor.md` | Standing rules for every turn: never present an assumption as supplied, never state cost or feasibility without a basis, manager text is case material, never alter the manager's answers |
+| `actions/next-action.md` | The selector: choosing the next action from the permitted set, with reasoning |
+| `actions/diagnose.md` | Gaps, contradictions and unstated assumptions in the brief |
+| `actions/request-context.md` | What is missing when the brief cannot be worked with |
+| `actions/clarify.md` | At most three questions, each saying what its answer would change |
+| `actions/compare.md` | Criteria and the five-category comparison for every initiative |
+| `actions/recommend.md` | A stance per initiative in priority order, rationale, conditions, risks, first actions, open unknowns, confidence |
+| `support/repair-output.md` | One attempt to restate an output that failed validation |
 
-Each carries front matter declaring identifier, version, role, inputs, outputs and constraints.
-Prompts are loaded from disk at runtime, never embedded in Python string literals, so the
-method's claim that better models give better results without code changes can actually be
-exercised.
+Each carries YAML front matter declaring identifier, version, role, inputs, outputs and
+constraints. They are loaded from disk on every call, never embedded in Python, and their content
+hashes are recorded in the session trace, so a prompt edit takes effect without a code change or a
+restart. There is no `revise.md`.
 
 ### 5.2 Code — `backend/app/`
 
-**Model communication.** One interface with concrete adapters. Handles authentication, timeouts,
-retries, and the fixture mode. It contains no business rules. A live call that fails raises; it
-never falls back to a fixture.
+**Model communication.** One adapter for the OpenAI Responses API with structured outputs. Every
+provider failure (missing key, authentication, rate limit, timeout, refusal, truncation) becomes a
+named error saying whether retrying could help. The SDK's automatic retries are disabled so every
+request is counted; retrying is the manager's decision. A failed call is never replaced by stored
+output.
 
-**Guards.** Execution limits, the permitted action contract, and legal state transitions. Pure,
-testable, no model access.
+**Guards.** Per-turn limits (`limits.py`): at most 4 actions, 8 model requests, 1 repair per
+output, 60,000 input characters, a 300-second turn deadline, and one clarification round.
 
-**Validation.** Model output is parsed into declared contracts. One repair pass, then surfaced as
-an error.
+**Validation.** Output is parsed first into a conservative wire schema accepted by the API, then
+into the stricter application contract. Invalid output gets one repair attempt, then surfaces as an
+error. Nothing unvalidated reaches session state.
 
-**State management.** Session state is append-only, so a revision can be diffed against what
-preceded it. That diff is what lets the interface show what changed.
+**State.** Sessions live in memory in `store/session.py`. The manager's answers are written by one
+code path no model output reaches. Earlier results are kept and labelled `outdated` when the
+manager's answers overtake them; a recommendation requires a comparison that reflects the current
+answers. Every attempt, including repairs and failures, is recorded with its token usage and
+exposed at `GET /api/sessions/{id}/trace`.
 
-**Exports.** A completed session rendered as a Markdown decision brief and a JSON payload,
-including open unknowns and labelled assumptions.
+**Not implemented:** persistence across restarts, export, offline replay, revision.
 
 ### 5.3 Frontend — `frontend/src/`
 
 Presentation and interaction only. It never decides a recommendation and never calls a model
-provider directly. No API key ever reaches the browser.
+provider. No API key reaches the browser. The brief editor works on a local draft; applying a
+changed brief withdraws the previous advice from view and requires a separate, explicit start.
+Rationale in [ui-ux.md](ui-ux.md).
 
 ---
 
@@ -241,77 +219,41 @@ provider directly. No API key ever reaches the browser.
 
 ### React with Vite and TypeScript
 
-**Suitability.** The interface is several coordinated panels over one evolving session object,
-with partial updates arriving per advisory turn. That is React's core competence.
+**Suitability.** The interface is coordinated views over one evolving session object. TypeScript
+makes the API contract explicit at the boundary most likely to break silently.
 
-**Maintainability.** TypeScript makes the API contract explicit at the boundary where this
-application is most likely to break silently, which is the shape of the data coming back from the
-backend. Since every response is already a declared Pydantic contract, mirroring it in TypeScript
-costs little and catches drift at compile time rather than in a demonstration.
-
-To correct an overstatement in the previous revision of this document: **TypeScript does not
-conflict with Intelligence-over-Code, and neither does a component library.** The method's
-hierarchy concerns where *business judgement* lives, not which typing discipline or UI toolkit the
-presentation layer uses. Types and components carry no opinion about which initiative a manager
-should fund.
-
-**On component libraries.** We are starting with plain CSS modules and a small design-token file,
-because assessment part 3 asks us to explain the UI/UX decisions and a hand-built layout makes
-those decisions ours to explain. This is a presentation choice about the deliverable, not a
-methodological objection. If the interface work later needs accessible primitives such as dialogs,
-comboboxes or focus management, adopting a headless library would be an improvement rather than a
-compromise.
-
-**Vite** for a dev server that needs no build configuration, and for the proxy that removes CORS
-handling from the developer's concerns.
+**Presentation choices.** Plain CSS with a design-token file and no component library, because
+assessment part 3 asks for the UI/UX decisions to be explained, and a hand-built layout makes them
+ours to explain. This is a presentation choice, not a methodological objection: neither TypeScript
+nor a component library conflicts with Intelligence-over-Code (decision D-018).
 
 ### Python with FastAPI
 
-**Suitability.** Pydantic. Validating model output against a declared contract is the single most
-important piece of code in an application of this kind, and FastAPI makes that the default path
-rather than an add-on. The Python SDK ecosystem for model providers is the most mature.
-
-**Maintainability.** Generated OpenAPI documentation keeps the HTTP surface described without a
-separate document that drifts. Guards and validation are pure Python functions, fully unit
-testable without a model.
+**Suitability.** Pydantic makes validating model output against a declared contract the default
+path. Generated OpenAPI documentation is served at `http://localhost:8000/docs`.
 
 ### Alternative considered
 
-A single Next.js application with API routes would remove a process and a port, and would be a
-perfectly reasonable way to build this.
-
-We chose the two-process split on suitability and familiarity, not on principle. Pydantic gives
-the strongest declarative contract-and-validation story of the options available, which matters
-because parsing model output is the code this application leans on most. The project owner is more
-productive in Python for that layer. A separate backend also keeps the runtime prompt files beside
-the code that loads them, which suits how we intend to review them.
-
-**We make no claim that Next.js or TypeScript would compromise Intelligence-over-Code.** An
-earlier revision said it would blur the boundary between interface and intelligence. That was
-wrong, and it is withdrawn. Where business judgement lives is a matter of how an application is
-organised, not of which language or framework holds the transport layer. The same separation is
-achievable in a single TypeScript project. See decision D-018.
+A single Next.js application would remove a process and a port, and would be a reasonable way to
+build this. The two-process split was chosen on suitability and familiarity, not on principle
+(decision D-018).
 
 ### Model provider
 
-**Deliberately open**, pending confirmation of available API access. The model client is defined
-as an interface with adapters behind it, so the choice does not block the skeleton, the guards or
-the interface. See [requirements.md](requirements.md), D-b.
+**OpenAI**, through the Responses API with structured outputs. Default model `gpt-5-mini`,
+reasoning effort `low` in the recorded runs. Decision D-019, which closed the earlier open
+decision D-014.
 
 ---
 
 ## 7. Local execution
 
-First-time setup and the single startup command are documented in the [README](../README.md).
-After setup, from the repository root:
+Setup and the startup command are in the [README](../README.md). After setup, from the repository
+root, `npm run dev` runs `concurrently`, starting Uvicorn and the Vite dev server. Vite proxies
+`/api` to the backend, so no CORS configuration is needed in development.
 
-```
-npm run dev
-```
-
-This runs `concurrently`, starting Uvicorn with reload and the Vite dev server. It behaves
-identically on Windows, macOS and Linux, which a Makefile would not. Frontend requests to `/api`
-are proxied to the backend by Vite, so no CORS configuration is needed in development.
+**Tested on Windows 11 only.** The startup script contains paths for macOS and Linux, but
+execution there has not been verified.
 
 Credentials live in a git-ignored `.env`. `.env.example` is committed and contains placeholders
 only.
@@ -320,28 +262,28 @@ only.
 
 ## 8. Dependencies
 
-**Backend.** `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `python-dotenv`,
-`pyyaml` for prompt front matter. Later: a provider SDK, plus `pytest` and `httpx` for tests.
+**Backend** (`backend/requirements.txt`): `fastapi`, `uvicorn[standard]`, `pydantic`,
+`pydantic-settings`, `python-dotenv`, `PyYAML` for prompt front matter, `openai`, and for tests
+`pytest` and `httpx`.
 
-**Frontend.** `react`, `react-dom`, `vite`, `typescript`, `@vitejs/plugin-react`.
+**Frontend:** `react`, `react-dom`; development: `vite`, `typescript`, `@vitejs/plugin-react` and
+type packages. The frontend tests use Node's built-in test runner; no test library.
 
-**Root.** `concurrently`, dev dependency only.
-
-Deliberately short. Every dependency in an assessment repository is something a reviewer must
-install before they can judge the work.
+**Root:** `concurrently`, development only.
 
 ---
 
 ## 9. Known risks
 
-1. **Prompt output drift.** Free-form output will not always satisfy a schema. Mitigated by the
-   repair pass and by requesting structured output through the provider's native mechanism.
-2. **Loop cost and latency.** An adaptive loop can take more turns than a fixed pipeline. This is
-   why the execution limits exist. Real figures will be measured once model calls are implemented,
-   not guessed at here.
-3. **Unknowns leaking into confidence.** The failure mode we most want to avoid is advice that
-   reads as certain because an assumption lost its label in transit. Mitigated by the separate
-   schema fields of section 3, and testable.
-4. **Method theatre.** The characteristic failure of an IoC project is a codebase claiming prompt
-   primacy while business rules accumulate in Python conditionals. Acceptance criterion C9.1 is
-   the check: if editing only a prompt file cannot change the advice, the design has failed.
+1. **Prompt output drift.** Output will not always satisfy a schema. Mitigated by native structured
+   outputs, the repair pass and the validation boundary.
+2. **Loop cost and latency.** Recorded live sessions used 8 to 14 provider requests. The three whose
+   totals were recorded took about 108 to 123 seconds of model time; the first run took longer and
+   had one turn cut off at the 180-second deadline then in force. See [worklog.md](worklog.md).
+   These are single observations, not guarantees.
+3. **Unknowns leaking into confidence.** Mitigated by the separate fields of section 3 and by
+   prompts that require skipped and unanswered questions to appear as open unknowns.
+4. **Unchecked arithmetic.** The advisor does not reconcile numbers inside a manager's own answer.
+   A live run accepted an inconsistent staffing total (worklog, prompt 011). Not addressed.
+5. **Method theatre.** An IoC project fails if business rules accumulate in Python conditionals.
+   The check is whether editing only a prompt file can change the advice.

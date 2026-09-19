@@ -22,9 +22,11 @@ import {
  * pushing the recommendation off the screen.
  *
  * **Prominence follows disposition, not position.** Every option the advisor
- * recommended gets a lead card; the rest sit in quieter cards. Array order is
- * not read as a ranking, because the contract has no priority field. If nothing
- * is recommended, that is shown as the finding it is.
+ * recommended gets a lead card; the rest sit in quieter cards. The advisor's
+ * list order, which its prompt says carries priority, is kept within each
+ * group, but no item is labelled "first": the order is not validated and no
+ * field states it (D-048). If nothing is recommended, that is shown as the
+ * finding it is.
  *
  * **Conditions stay beside the advice; provenance is one step away.** What a
  * recommendation holds only if is visible in the card. The sources it cites,

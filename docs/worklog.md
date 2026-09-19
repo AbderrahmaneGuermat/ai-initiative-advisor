@@ -1733,3 +1733,61 @@ PREPARED states are the live session payload with status fields changed, served 
 ### Status at end of entry
 
 Complete. The real backend is left running, still holding session `2a60d8040351`.
+
+## 2026-09-19 — Prompt [016](prompts/016-submission-documentation.md), submission documentation
+
+**Instruction:** Bring the documentation into line with the completed application for submission,
+add a reviewer guide, and correct outdated claims. No model calls, no UI changes, no new features.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### Starting point
+
+Revision `d55e12fd074199cd805ab24da6c0745d25b516ef`, clean tree, matching `origin/master`.
+
+### Claims corrected
+
+| Where | Was | Now |
+|---|---|---|
+| README introduction | The application "revises that recommendation when a constraint changes" | Revision is not implemented; a changed brief withdraws the advice and needs a new session |
+| README live verification | "done, twice", then a table of three runs, without the coherent run | All five live runs listed; the coherent 0.7 FTE run kept separate from the 1.5 FTE one |
+| README schema section | OpenAI service acceptance "not yet observed" | Removed from the README; the recorded runs show acceptance for `gpt-5-mini`. Same correction in the `wire.py` docstring |
+| README browser review | "the part nobody has done yet", describing the old three-panel interface | Replaced by the reviewer guide and a description of the scripted checks actually run |
+| README editing | Editing starts a new session | Editing is a local draft; applying a change withdraws the advice; starting a session is a separate action |
+| README and prompt index | Runtime prompts described as future | They exist; linked |
+| README setup | No clone step; `.env` copied in a way that overwrites; key configured after "start"; a live `curl` smoke test; "Node 20 or later"; frontend tests "Node 22.6 or later"; macOS and Linux implied verified | Clone first; a copy that leaves an existing `.env` alone; key before start; smoke test removed; Node 24.17.0 as the tested baseline; test runner needs described separately; Windows stated as the only tested platform |
+| Requirements | "application logic not started"; offline replay and revision described as capabilities; provider, persistence, export and test depth listed as open | Current status per requirement; offline replay and revision marked proposed, not implemented; resolved decisions listed with their records |
+| Requirements B7 | "No step-by-step development lifecycle, no prompt file format" | Rechecked the page: it publishes a prompt structure (role, inputs, outputs, constraints) and a ChatGPT → GPTBlue Studio procedure. Now quoted in B5 and B6. It still says nothing about validation, limits or state |
+| Architecture | Health-only API, prompts "not yet written", provider open, planned session store and tests, an export renderer and fixtures in the diagram, a `revise.md` prompt, retries in the model client, cross-platform behaviour claimed | Matches the code: all routes, eight prompts and no `revise.md`, OpenAI, in-memory store, tests present, no export, empty fixtures directory, SDK retries disabled, Windows only |
+| Package and dependency comments | "Skeleton stage" in `package.json`, `requirements.txt`, `main.py` (including the OpenAPI description) and `config.py`; `.env.example` and `data/README.md` describing replay as coming | Corrected. Comments and metadata only |
+| D-045 and two frontend comments | The model was never asked for an order | It was. Corrected by D-048; interface unchanged |
+| `routes.py` start-session docstring | Editing the brief starts a new session | A changed brief is never used to revise; the manager starts a new session explicitly |
+
+### Added
+
+- [reviewer-guide.md](reviewer-guide.md): scope and attribution, the two kinds of prompt, the
+  runtime prompts in brief, a route that makes no model call, a live walkthrough using the
+  questions actually generated in session `2a60d8040351` (answered, skipped and blank), editing,
+  cancellation, the explicit new-session step and URL recovery, how to weigh each kind of
+  evidence, and how the method is interpreted. It states that `2a60d8040351` cannot be opened
+  outside the development environment and that prepared browser states are not an offline mode.
+- A note in the prompt index that a few short operational instructions were deliberately not
+  recorded, at the project owner's request.
+
+### Checks performed
+
+- **No model calls.** The only request to the running backend was one `GET` of session
+  `2a60d8040351`, to quote its questions and answer accurately.
+- Because code comments and two docstrings changed, the checks were run again at this revision:
+  **169 backend tests passed; 15 frontend tests passed; type check and production build pass**,
+  on Node 24.17.0 and Python 3.14.5.
+- Internal links and file paths in the edited documents were checked by script, and command
+  names were checked against `package.json` and `frontend/package.json`.
+- Historical worklog entries and numbered prompts were not edited.
+
+### Status at end of entry
+
+Documentation current for submission. The backend used during development is still running and
+still holds session `2a60d8040351`; nothing in the documentation depends on it.
