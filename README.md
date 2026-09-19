@@ -59,19 +59,24 @@ and a validator. It does not mean it does anything.
 end to end. Details, including what the first run got wrong, are in
 [docs/worklog.md](docs/worklog.md).
 
-| | First run | Second run, after the fixes |
-|---|---|---|
-| Provider requests | 14 | 8 |
-| Outputs rejected by validation | 2 | 0 |
-| Repair attempts | 2 | 0 |
-| Requests cancelled by the deadline | 1 | 0 |
-| Tokens counted | 84,287 | 40,478 |
-| Estimated cost | $0.086 | $0.027 |
-| Wall clock | four turns, one timing out at 180s | two turns, 108s total |
+| | First run | Second run | Final run, through the browser |
+|---|---|---|---|
+| Session | `e0f72bc44dfb` | `08624152de60` | `40879adc7c67` |
+| Driven by | API | API | the interface |
+| Provider requests | 14 | 8 | 8 |
+| Outputs rejected by validation | 2 | 0 | 0 |
+| Repair attempts | 2 | 0 | 0 |
+| Requests cancelled by the deadline | 1 | 0 | 0 |
+| Requests with no usage reported | 1 | 0 | 0 |
+| Tokens counted | 84,287 | 40,478 | 40,079 |
+| Estimated cost | $0.086, a floor | $0.027 | $0.026 |
+| Wall clock | four turns, one timing out at 180s | two turns, 108s | two turns, 122s |
 
-**The interface itself has not been verified.** Every check so far has gone through the API. Nobody
-has opened the browser and clicked through the panels, so the rendering, the forms and the skip
-control are unconfirmed. Instructions for doing that are below.
+**The interface has been driven end to end in a browser**, most recently in session
+`40879adc7c67` against revision `8f0c184`: the sample brief, three clarification questions, one
+answered, one skipped, one left blank, and a comparison and recommendation that rest on the
+current answers. What has still never happened is a person using it by hand. Keyboard navigation,
+screen reader output and pointer interaction beyond scripted clicks remain unverified.
 
 Three things worth keeping apart, because it is easy to run them together:
 

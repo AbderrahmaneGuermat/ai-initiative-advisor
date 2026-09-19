@@ -878,6 +878,61 @@ unknown. No staffing answer has been invented and no historical result altered.
 
 ---
 
+## D-042 — The waiting message describes waiting, not a deadline
+
+**Status:** Confirmed · 2026-09-19
+
+Every place the interface describes a wait now says: *"The advisor is working. This may take a few
+minutes."* The visible notice, the status beside the submission control and the accessible
+announcement all use the same wording.
+
+**What was wrong.** The previous wording said "This can take up to a minute", which presented the
+turn deadline as a response time. It is neither. `MAX_TURN_SECONDS` is the point at which work is
+abandoned, and the number quoted was not even that: it was a guess from one early measurement.
+Observed turns have run from 21 seconds to 101 seconds, and an earlier one was cut off at 180.
+Quoting a ceiling as a maximum manufactures a guarantee out of a limit.
+
+The indicator stays beside the submission control and duplicate-submission protection is unchanged.
+
+---
+
+## D-043 — Missing information is not evidence against an initiative
+
+**Status:** Confirmed · 2026-09-19 · runtime prompts only
+
+Each stance answers a different question, and the runtime prompts now say which:
+
+- `not_recommended` requires **supplied evidence supporting a substantive reason against** the
+  option, named and pointed at.
+- `insufficient_information` means the available evidence **does not support assessing it**.
+- `consider_later` means there is a supported reason to defer its priority.
+
+**The test the prompt gives:** strike out everything you do not know and read what is left. A
+reason against the option remaining means `not_recommended`. Little remaining means
+`insufficient_information`.
+
+**Why this needed saying.** Session `08624152de60` filed the undescribed chatbot as
+`not_recommended`, reasoning that "selecting it now would consume limited budget and attention with
+high risk of delivering nothing measurable". That reads as a finding and is not one: nothing about
+the option had been weighed, because nothing about it was known. A gap in the brief had been
+converted into a verdict on the work.
+
+**The two are compatible with saying work should wait.** The prompt makes that explicit. Telling a
+manager not to commit budget until a scope exists is a statement about sequencing; it is not a
+claim about merit that was never established. The reverse error is named too: retreating to
+`insufficient_information` when there are real grounds is its own evasion.
+
+Applied through `recommend.md` 1.2.0, `compare.md` 1.2.0 and `system/advisor.md` 1.2.0. No
+chatbot-specific outcome is hard-coded, no ranking imposed, nothing relabelled in the frontend, and
+no extra model call added. The separation of facts, assumptions and unknowns is unchanged.
+
+**Observed once, live.** In session `40879adc7c67` the same undescribed chatbot came back as
+`insufficient_information`, with the rationale "its likely impact on admin cost and feasibility
+within the available capacity cannot be assessed; do not commit build budget until scope and data
+residency are defined." That is the intended shape. It is one run, not a controlled comparison.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

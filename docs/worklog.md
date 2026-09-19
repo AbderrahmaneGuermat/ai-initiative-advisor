@@ -1029,3 +1029,161 @@ answer was invented and no historical result was altered.
 
 Interface reworked, verified by replay at two viewports, committed and pushed. Screenshots are
 local only and untracked. Stopping for review.
+
+---
+
+## 2026-09-19 — Prompt [010](prompts/010-provenance-and-final-live-run.md), provenance, wording, stance semantics and the final live run
+
+**Instruction:** Establish where the replayed screenshots came from, correct the waiting message,
+clarify what each recommendation stance means, and run one final live browser session.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### Part A — provenance of the screenshot sets
+
+The reviewer noticed that the latest screenshots differ from the earlier browser walkthrough: a
+different skipped question, and a different stance for the chatbot. **They are different sessions.**
+The differences are model output varying between executions, not anything the frontend did.
+
+Established from session identifiers in the recorded payloads and from file modification times:
+
+| Screenshot set | How produced | Session | When |
+|---|---|---|---|
+| `screenshots/*.png`, 17 files | **Live browser session** | **not recorded** | captured 2026-09-19 17:21 to 17:23 |
+| `screenshots/ui-002/`, 20 files | **Replay** of a recorded run | `08624152de60` | recorded 2026-09-18 23:32; replayed 2026-09-19 18:21 |
+| `screenshots/ui-002-review/01`, `02` | **Live application**, no model request | none created | 2026-09-19 18:43 |
+| `screenshots/ui-002-review/03`, `04`, `04b` | **Replay** of the same recording | `08624152de60` | replayed 2026-09-19 18:43 |
+| `screenshots/final-live/`, 9 files | **Live browser session** | `40879adc7c67` | 2026-09-19 19:08 to 19:11 |
+
+The replay server reads `run2-01-start.json` and `run2-02-answers.json`, both carrying
+`session_id: 08624152de60`.
+
+**Reconciling the two observations the reviewer raised:**
+
+- *Skipped question.* Session `08624152de60` asked `Q-TEAM`, `Q-BUDOK`, `Q-DATAAVAIL`, and the
+  skipped one was `Q-BUDOK`, about budget approval. The browser walkthrough asked a different set
+  and skipped a board-review-date question. Neither is wrong; they are different generated
+  questions from different runs.
+- *Chatbot stance.* `08624152de60` produced `not_recommended`. The browser walkthrough produced
+  `insufficient_information`. Both are genuine model output. The inconsistency between them is what
+  Part C addresses.
+
+**What could not be established.** The browser walkthrough's session identifier is **not
+recoverable**. Its payloads were never written to disk, only screenshots were taken, and sessions
+are held in memory and lost on restart. Nothing has been reconstructed to fill that gap. All
+existing captures and recordings are unchanged.
+
+**One ordering point worth stating plainly**, since it is easy to read backwards: the replayed
+recording is *older* than the browser walkthrough it was compared against. `08624152de60` ran on
+2026-09-18 at 23:32; the walkthrough ran on 2026-09-19 at 17:21.
+
+---
+
+### Part B — the waiting message
+
+"This can take up to a minute" is replaced by "The advisor is working. This may take a few minutes"
+in the visible notice, the status beside the submission control and the accessible announcement.
+The README's "expect roughly a minute" is corrected the same way. Recorded as D-042.
+
+Historical worklog entries are unchanged; the earlier wording appears there as a record of what was
+said at the time.
+
+---
+
+### Part C — stance semantics
+
+The runtime prompts now state what each stance answers, and give a test for choosing between them.
+`not_recommended` needs supplied evidence supporting a substantive reason against the option;
+`insufficient_information` means the evidence does not support assessing it. The prompt is explicit
+that the two are compatible with telling a manager not to start yet, and that retreating to
+uncertainty when grounds exist is its own error. Recorded as D-043.
+
+Applied in `recommend.md` 1.2.0, `compare.md` 1.2.0 and `system/advisor.md` 1.2.0. Nothing
+chatbot-specific was hard-coded, no ranking imposed, nothing relabelled in the frontend, and no
+extra model call added.
+
+---
+
+### Part D — the final live run
+
+**This was a real execution against OpenAI through the interface.** Not a replay. The replay server
+was not running; the health endpoint was checked for the absence of its marker before starting.
+
+| | |
+|---|---|
+| Revision under test | `8f0c1847bd7eec4248b3eb3475b9f7ed9a1e8b32` |
+| Prompt versions | system.advisor 1.2.0, action.next 1.2.0, action.clarify 1.1.0, action.diagnose 1.1.0, action.compare 1.2.0, action.recommend 1.2.0, support.repair 1.0.0 |
+| Model | `gpt-5-mini`, reasoning effort `low` |
+| Session | `40879adc7c67` |
+| Viewport | 1366 × 768 |
+
+**Action sequence, as it actually happened.**
+
+Turn 1: `ask_clarification`, 21.3 seconds. Three questions, about budget confirmation, internal
+staff capacity, and whether telemetry exists.
+
+The questions were read before anything was typed. The staffing question was answered with a short
+fictional reply that addresses it directly and fits the brief: about 1.5 full-time equivalents over
+three months, split across the operations director, a dispatcher and the single IT analyst, with no
+data engineer and no prior AI project. The budget question was skipped. The telemetry question was
+left blank.
+
+Turn 2: `diagnose`, then `compare`, then `recommend`, 101.1 seconds in total. Diagnosis ran before
+the comparison, and one clarification round was used.
+
+**Counts and usage.** Every figure below came from the provider; none is missing and none is
+assumed.
+
+| Measure | Value |
+|---|---|
+| Provider requests | 8 (4 selector, 4 action, 0 repair) |
+| Outputs rejected by validation | 0 |
+| Repairs | 0 |
+| Cancelled or failed | 0 |
+| Requests with no usage reported | 0 |
+| Input tokens | 31,000 |
+| Cached input tokens | 0 |
+| Output tokens | 9,079, of which 2,048 reasoning |
+| Total counted | 40,079 |
+| Estimated cost | **$0.026** at published rates |
+| Wall clock | 122.4 seconds of model work across two turns |
+
+Reasoning tokens are inside the output total and are not added to it.
+
+**What the run confirms.**
+
+- Submitted answers stay visible. The staffing answer is rendered under its question with the
+  caveat that answered means replied.
+- The three statuses are distinct and correct: skipped, answered, not answered.
+- Unresolved information stays explicit. `Q-BUDGET` appears in the open unknowns marked as skipped,
+  and the unanswered telemetry question appears as unknown.
+- The recommendation rests on a current comparison: `comparison_status` and
+  `recommendation_status` both report `current`, `previous_recommendation` is absent, and the
+  comparison and recommendation records both carry answers version 1, matching the session.
+- The chatbot came back `insufficient_information` with a sequencing instruction rather than a
+  verdict, which is the outcome Part C aimed for.
+
+**Checks run before the live session:** 169 backend tests passing, frontend type check and
+production build both passing. The revision was committed and pushed before any provider request.
+
+### Limitations
+
+1. **One run.** The stance change was observed once. Prompt behaviour varies between executions,
+   and a single agreeing run is weak evidence. Session `08624152de60` produced the opposite label
+   under the older prompts, but the comparison is not controlled.
+2. **Nobody has used the interface by hand.** Every walkthrough has been driven by Playwright.
+   Keyboard navigation, screen reader output and pointer behaviour remain unverified.
+3. **The earlier walkthrough's session identifier is unrecoverable.** Stated as a gap rather than
+   filled in.
+4. **Revision is still validated but not offered**, persistence is still in memory, and offline
+   fixture replay is still not implemented.
+5. **No cached input tokens have ever been observed**, across all four live runs. The assembled
+   input differs per call, so there may be little to cache. Nothing is concluded from that.
+
+### Status at end of entry
+
+Provenance documented, wording corrected, stance semantics clarified, and one final live browser
+session completed and recorded. Screenshots are local and untracked. The real application is left
+running.

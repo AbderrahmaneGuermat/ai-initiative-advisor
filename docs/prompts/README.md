@@ -31,6 +31,7 @@ two are never mixed.
 | 007 | [007-live-run-corrections.md](007-live-run-corrections.md) | Record the first live run and correct what it found: timeout continuity, skipped-question references, advisor sequencing, and usage measurement |
 | 008 | [008-state-consistency.md](008-state-consistency.md) | State consistency: a recommendation requires a current comparison, history is kept but labelled, and a pending round is distinguished from an unanswered question |
 | 009 | [009-interface-improvements.md](009-interface-improvements.md) | Interface work from the browser walkthrough: primary action reachable, progress beside the control, readable hierarchy, and the manager's submitted answers shown back |
+| 010 | [010-provenance-and-final-live-run.md](010-provenance-and-final-live-run.md) | Establish replay provenance, correct the waiting message, clarify stance semantics, and run the final live browser session |
 
 ## Attribution
 
