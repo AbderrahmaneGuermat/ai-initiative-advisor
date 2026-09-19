@@ -988,3 +988,26 @@ whoever runs the service. The manager sees one truthful status.
 
 **Presentation only.** No contract, prompt or backend behaviour changed. The same session payload
 drives the new view.
+
+## D-046 — Identifiers in model prose are rendered as what they refer to
+
+**Status:** Confirmed · 2026-09-19
+
+The model writes identifiers into its sentences ("in-house (Q-HISTDATA)", "map to OBJ-COST").
+The interface now draws each one that **exactly** matches something the session holds as what it
+refers to: an objective's statement, an option's name, "budget constraint", "your answer" for an
+answered question, and the opening words of the question in quotation marks for one that was
+skipped or not answered.
+
+**Presentation only.** The stored output is not modified and the runtime prompts are unchanged. The
+rendered segments always rejoin to the original text, and a test checks that. The identifier stays
+on the element and in its tooltip, and every cited source is listed with its identifier under
+"Evidence & sources" and in the reasoning view.
+
+**No guessing.** Tokens that do not resolve exactly are printed as written. A longer identifier that
+merely contains a known one is not split.
+
+**Why an open question is named by its own words.** A generic label ("an unanswered question")
+read badly in the model's sentences: "relates to unanswered an unanswered question". The question's
+opening words say which question is meant; its full text is in the tooltip and listed in full on
+the same page.

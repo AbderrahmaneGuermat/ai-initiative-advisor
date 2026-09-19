@@ -35,6 +35,7 @@ two are never mixed.
 | 011 | [011-staffing-consistency-correction.md](011-staffing-consistency-correction.md) | Correct the staffing inconsistency in the demonstration data and verify it with one live session |
 | 012 | [012-session-recovery.md](012-session-recovery.md) | Reopen an existing backend session from a URL, and capture the completed example without new model requests |
 | 013 | [013-visual-redesign.md](013-visual-redesign.md) | Implement the approved visual redesign with exact tokens, cover every state, verify at three viewports, and document the interface rationale |
+| 014 | [014-visual-refinement.md](014-visual-refinement.md) | Refine the redesign against the attached reference: hierarchy, a simpler recommended card, a compact sidebar, mobile reading order, readable references in prose, and a corrected prepared screenshot |
 
 ## Attribution
 

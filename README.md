@@ -223,6 +223,13 @@ backend\.venv\Scripts\python.exe -m pytest backend      # Windows
 backend/.venv/bin/python -m pytest backend                # macOS, Linux
 ```
 
+The frontend has a small test of how identifiers in the advisor's prose are rendered, using
+Node's built-in runner (Node 22.6 or later):
+
+```bash
+npm --prefix frontend test
+```
+
 ### Using it
 
 1. Open <http://localhost:5173>. The fictional brief loads on the left.

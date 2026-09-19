@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { SessionView } from "../api/client";
+import RefText from "./RefText";
 
 /**
  * The clarification round.
@@ -115,7 +116,9 @@ export default function Clarification({
       {pending.map((question) => (
         <div className="ask" key={question.id}>
           <p className="ask__q">{question.question}</p>
-          <p className="ask__why">{question.why_it_matters}</p>
+          <p className="ask__why">
+            <RefText text={question.why_it_matters} />
+          </p>
           <textarea
             className="input input--area"
             rows={3}

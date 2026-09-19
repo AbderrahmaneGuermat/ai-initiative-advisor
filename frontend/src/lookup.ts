@@ -87,6 +87,74 @@ export function readableSource(session: SessionView | null, ref: SourceRef): Rea
 }
 
 /**
+ * Identifiers the model wrote into prose, such as "(Q-HISTDATA)" or "address
+ * OBJ-LATE". Only the exact identifiers this session holds are replaced; a
+ * token that merely looks like one is left exactly as written.
+ */
+const ID_PATTERN = /\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\b/g;
+
+export type InlineRef = { id: string; label: string; kind: string; detail: string };
+
+export type Segment = { text: string } | { ref: InlineRef };
+
+/** Every identifier the session can resolve, with how to show it inline. */
+export function referenceIndex(session: SessionView | null): Map<string, InlineRef> {
+  const index = new Map<string, InlineRef>();
+  if (!session) return index;
+  const { brief } = session;
+
+  for (const o of brief.objectives) {
+    index.set(o.id, { id: o.id, label: o.statement, kind: "Objective", detail: o.statement });
+  }
+  for (const c of brief.constraints) {
+    index.set(c.id, {
+      id: c.id,
+      label: `${c.kind} constraint`,
+      kind: "Constraint",
+      detail: c.value ?? "Not stated",
+    });
+  }
+  for (const i of brief.initiatives) {
+    index.set(i.id, { id: i.id, label: i.name, kind: "Option", detail: i.name });
+  }
+  for (const q of session.questions) {
+    // An answered question is cited for what the manager said. An open one is
+    // named by its own opening words, because a generic label reads badly in
+    // the model's sentences ("relates to unanswered ..."). The full question
+    // is in the tooltip and is listed in full under "Confirm before committing".
+    const label = q.status === "answered" ? "your answer" : `“${opening(q.question)}”`;
+    index.set(q.id, { id: q.id, label, kind: "Question", detail: q.question });
+  }
+  return index;
+}
+
+/** The first few words of a question, marked as cut when it is. */
+export function opening(text: string, words = 6): string {
+  const parts = text.trim().split(/\s+/);
+  return parts.length <= words ? parts.join(" ") : `${parts.slice(0, words).join(" ")}…`;
+}
+
+/**
+ * Split prose into plain text and resolved references. Joining the pieces back
+ * with each reference's `id` reproduces the original text exactly, which is
+ * what keeps this a presentation change rather than an edit of model output.
+ */
+export function splitReferences(text: string, index: Map<string, InlineRef>): Segment[] {
+  const segments: Segment[] = [];
+  let last = 0;
+  for (const match of text.matchAll(ID_PATTERN)) {
+    const ref = index.get(match[0]);
+    if (!ref) continue;
+    const start = match.index ?? 0;
+    if (start > last) segments.push({ text: text.slice(last, start) });
+    segments.push({ ref });
+    last = start + match[0].length;
+  }
+  if (last < text.length) segments.push({ text: text.slice(last) });
+  return segments;
+}
+
+/**
  * Whether the advice establishes that one option comes before the others.
  *
  * It does not. The contract carries a disposition per option and no priority

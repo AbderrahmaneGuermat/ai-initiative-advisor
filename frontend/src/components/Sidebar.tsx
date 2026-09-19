@@ -2,33 +2,28 @@ import { useId, useState } from "react";
 
 import type { Brief, Constraint } from "../api/client";
 import AutoTextarea from "./AutoTextarea";
-import { CalendarIcon, EditIcon, PeopleIcon, ShieldIcon, TargetIcon, WalletIcon } from "./icons";
+import ClampText from "./ClampText";
+import { ChevronIcon, EditIcon, TargetIcon } from "./icons";
 
 /**
  * The context sidebar: who is being advised, and under what limits.
  *
- * A compact read-only summary by default, with the whole brief editable behind
- * one clearly labelled control. The summary shows the values the brief
- * actually holds; nothing is parsed out of prose to fill a slot, and a
- * constraint the manager left empty says "Not stated" rather than being hidden.
+ * The session controls come first: start, and the full brief behind one
+ * clearly labelled control directly beneath it. The editor opens there, next to
+ * the button it affects, rather than below everything else.
  *
- * Long constraint text is shown in full and wraps. It is not truncated, because
- * a constraint the manager cannot read is a constraint they cannot check.
+ * The compact view summarises. Objectives show their titles; why each matters
+ * is in the full brief. Constraints show their real kind and their full value.
+ * Nothing is parsed out of prose to make a shorter label, and a long value is
+ * cut to a few lines with a "Show all" button, never only a tooltip.
  *
- * The start control sits directly under the organisation so that it is reachable
- * without scrolling on a 1366 × 768 screen.
+ * On a narrow screen the context folds behind its own disclosure, so the work
+ * in the main column is reached without scrolling past it.
  */
 
-const ICONS: Record<string, (p: { size?: number }) => JSX.Element> = {
-  budget: WalletIcon,
-  headcount: PeopleIcon,
-  timeline: CalendarIcon,
-  regulatory: ShieldIcon,
-};
-
-function constraintIcon(kind: string) {
-  const key = kind.trim().toLowerCase();
-  return ICONS[key] ?? ShieldIcon;
+function kindLabel(kind: string): string {
+  const k = kind.trim();
+  return k ? k.charAt(0).toUpperCase() + k.slice(1) : "Constraint";
 }
 
 export default function Sidebar({
@@ -50,7 +45,9 @@ export default function Sidebar({
   emptyNote: string;
 }) {
   const [editing, setEditing] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
   const editorId = useId();
+  const contextId = useId();
 
   if (!brief) {
     return (
@@ -70,7 +67,7 @@ export default function Sidebar({
 
   return (
     <aside className="sidebar" aria-label="Context">
-      <section className="side-block">
+      <section className="side-top">
         <h2 className="side-label">Your organisation</h2>
         <p className="side-org">{brief.organisation}</p>
 
@@ -84,87 +81,31 @@ export default function Sidebar({
         <button className="button button--primary button--block" onClick={onStart} disabled={busy}>
           {busy ? "Working…" : startLabel}
         </button>
-      </section>
 
-      <section className="side-block">
-        <h2 className="side-label">What matters</h2>
-        {brief.objectives.length === 0 ? (
-          <p className="side-empty">No objectives stated.</p>
-        ) : (
-          <ul className="side-list">
-            {brief.objectives.map((objective) => (
-              <li key={objective.id} className="side-item">
-                <span className="side-item__icon" aria-hidden="true">
-                  <TargetIcon size={14} />
-                </span>
-                <span className="side-item__body">
-                  <span className="side-item__text">{objective.statement}</span>
-                  {objective.rationale && (
-                    <span className="side-item__sub">{objective.rationale}</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <div className="side-controls">
+          <button
+            type="button"
+            className="side-link"
+            aria-expanded={editing}
+            aria-controls={editorId}
+            onClick={() => setEditing((v) => !v)}
+          >
+            <EditIcon size={13} />
+            {editing ? "Hide the full brief" : "Review or edit the full brief"}
+          </button>
 
-      <section className="side-block">
-        <h2 className="side-label">Within these limits</h2>
-        {brief.constraints.length === 0 ? (
-          <p className="side-empty">No constraints stated.</p>
-        ) : (
-          <ul className="side-list">
-            {brief.constraints.map((constraint: Constraint) => {
-              const Icon = constraintIcon(constraint.kind);
-              return (
-                <li key={constraint.id} className="side-item">
-                  <span className="side-item__icon" aria-hidden="true">
-                    <Icon size={14} />
-                  </span>
-                  <span className="side-item__body">
-                    <span className="side-item__kind">{constraint.kind}</span>
-                    {constraint.value ? (
-                      <span className="side-item__text side-item__text--clamp" title={constraint.value}>
-                        {constraint.value}
-                      </span>
-                    ) : (
-                      <span className="side-item__text side-item__text--empty">Not stated</span>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+          <button
+            type="button"
+            className="side-link side-link--context"
+            aria-expanded={contextOpen}
+            aria-controls={contextId}
+            onClick={() => setContextOpen((v) => !v)}
+          >
+            <ChevronIcon size={13} className={contextOpen ? "rot90" : ""} />
+            {contextOpen ? "Hide context" : "Show context"}
+          </button>
+        </div>
       </section>
-
-      <section className="side-block">
-        <h2 className="side-label">Options considered</h2>
-        <ul className="side-list side-list--plain">
-          {brief.initiatives.map((initiative) => (
-            <li key={initiative.id} className="side-item side-item--tight">
-              <span className="side-item__body">
-                <span className="side-item__text">{initiative.name}</span>
-                {!initiative.description && (
-                  <span className="side-item__sub side-item__sub--warn">Not described</span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <button
-        type="button"
-        className="button button--quiet button--block"
-        aria-expanded={editing}
-        aria-controls={editorId}
-        onClick={() => setEditing((v) => !v)}
-      >
-        <EditIcon size={14} />
-        {editing ? "Hide the full brief" : "Review or edit the full brief"}
-      </button>
 
       {editing && (
         <div className="editor" id={editorId}>
@@ -262,6 +203,58 @@ export default function Sidebar({
           ))}
         </div>
       )}
+
+      <div className={contextOpen ? "side-context is-open" : "side-context"} id={contextId}>
+        <section className="side-block">
+          <h2 className="side-heading">What matters</h2>
+          {brief.objectives.length === 0 ? (
+            <p className="side-empty">No objectives stated.</p>
+          ) : (
+            <ul className="side-goals">
+              {brief.objectives.map((objective) => (
+                <li key={objective.id}>
+                  <TargetIcon size={13} />
+                  <span>{objective.statement}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="side-block">
+          <h2 className="side-heading">Within these limits</h2>
+          {brief.constraints.length === 0 ? (
+            <p className="side-empty">No constraints stated.</p>
+          ) : (
+            <dl className="side-rows">
+              {brief.constraints.map((constraint: Constraint) => (
+                <div className="side-row" key={constraint.id}>
+                  <dt className="side-row__label">{kindLabel(constraint.kind)}</dt>
+                  <dd className="side-row__value">
+                    {constraint.value ? (
+                      <ClampText lines={3}>{constraint.value}</ClampText>
+                    ) : (
+                      <span className="side-row__empty">Not stated</span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+
+        <section className="side-block">
+          <h2 className="side-heading">Options considered</h2>
+          <ul className="side-options">
+            {brief.initiatives.map((initiative) => (
+              <li key={initiative.id}>
+                {initiative.name}
+                {!initiative.description && <span className="side-options__warn">Not described</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </aside>
   );
 }

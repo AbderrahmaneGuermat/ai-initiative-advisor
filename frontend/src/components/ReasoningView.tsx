@@ -1,5 +1,6 @@
 import type { Claim, SessionView } from "../api/client";
 import { STANCE_LABEL, initiativeName, readableSource } from "../lookup";
+import RefText from "./RefText";
 
 /**
  * Reasoning and sources: everything the advice was built from.
@@ -32,7 +33,9 @@ function ClaimList({
       <ul className="evidence__list">
         {claims.map((claim, index) => (
           <li key={index} className={assumption ? "evidence__item is-assumption" : "evidence__item"}>
-            <span className="evidence__text">{claim.statement}</span>
+            <span className="evidence__text">
+              <RefText text={claim.statement} />
+            </span>
             {assumption && <span className="tag-soft">assumption</span>}
             {claim.sources.length > 0 && (
               <span className="evidence__sources">
@@ -40,7 +43,7 @@ function ClaimList({
                   const r = readableSource(session, ref);
                   return (
                     <span className="ref" key={i} title={`${r.kind} · ${r.id}`}>
-                      {r.kind}: {r.label}
+                      {r.kind}: {r.label} <code className="ref__id">{r.id}</code>
                     </span>
                   );
                 })}
@@ -95,7 +98,9 @@ export default function ReasoningView({ session }: { session: SessionView }) {
       {diagnosis && (
         <section className="block">
           <h3 className="block__title">Reading of the brief</h3>
-          <p className="prose">{diagnosis.summary}</p>
+          <p className="prose">
+            <RefText text={diagnosis.summary} />
+          </p>
 
           {(["gaps", "contradictions", "unstated_assumptions"] as const).map((key) => {
             const items = diagnosis[key];
@@ -115,15 +120,19 @@ export default function ReasoningView({ session }: { session: SessionView }) {
                 <ul className="disclose__list">
                   {items.map((item, index) => (
                     <li key={index}>
-                      <strong className="finding">{item.description}</strong>
-                      <span className="finding__why">{item.why_it_matters}</span>
+                      <strong className="finding">
+                        <RefText text={item.description} />
+                      </strong>
+                      <span className="finding__why">
+                        <RefText text={item.why_it_matters} />
+                      </span>
                       {item.relates_to.length > 0 && (
                         <span className="evidence__sources">
                           {item.relates_to.map((ref, i) => {
                             const r = readableSource(session, ref);
                             return (
                               <span className="ref" key={i} title={`${r.kind} · ${r.id}`}>
-                                {r.kind}: {r.label}
+                                {r.kind}: {r.label} <code className="ref__id">{r.id}</code>
                               </span>
                             );
                           })}
@@ -157,7 +166,9 @@ export default function ReasoningView({ session }: { session: SessionView }) {
               </summary>
               <ul className="disclose__list">
                 {comparison.criteria_considered.map((criterion, index) => (
-                  <li key={index}>{criterion}</li>
+                  <li key={index}>
+                    <RefText text={criterion} />
+                  </li>
                 ))}
               </ul>
             </details>
@@ -189,11 +200,15 @@ export default function ReasoningView({ session }: { session: SessionView }) {
                     <ul className="evidence__list">
                       {entry.missing_evidence.map((item, index) => (
                         <li className="evidence__item" key={index}>
-                          <span className="evidence__text">{item.description}</span>
-                          <span className="finding__why">{item.why_it_matters}</span>
+                          <span className="evidence__text">
+                            <RefText text={item.description} />
+                          </span>
+                          <span className="finding__why">
+                            <RefText text={item.why_it_matters} />
+                          </span>
                           {item.how_it_could_be_resolved && (
                             <span className="finding__why">
-                              How to find out: {item.how_it_could_be_resolved}
+                              How to find out: <RefText text={item.how_it_could_be_resolved} />
                             </span>
                           )}
                         </li>
@@ -234,11 +249,15 @@ export default function ReasoningView({ session }: { session: SessionView }) {
               <p className="qa__q">
                 {initiativeName(session, item.initiative_id)} — {STANCE_LABEL[item.stance]}
               </p>
-              <p className="prose">{item.rationale}</p>
+              <p className="prose">
+                <RefText text={item.rationale} />
+              </p>
               {item.rests_on_assumptions.length > 0 && (
                 <ul className="disclose__list">
                   {item.rests_on_assumptions.map((condition, index) => (
-                    <li key={index}>{condition}</li>
+                    <li key={index}>
+                      <RefText text={condition} />
+                    </li>
                   ))}
                 </ul>
               )}
@@ -254,10 +273,14 @@ export default function ReasoningView({ session }: { session: SessionView }) {
               <ul className="disclose__list">
                 {recommendation.risks.map((risk, index) => (
                   <li key={index}>
-                    <strong className="finding">{risk.description}</strong>
-                    <span className="finding__why">{risk.consequence_if_realised}</span>
+                    <strong className="finding">
+                      <RefText text={risk.description} />
+                    </strong>
+                    <span className="finding__why">
+                      <RefText text={risk.consequence_if_realised} />
+                    </span>
                     {risk.early_signal && (
-                      <span className="finding__why">Early signal: {risk.early_signal}</span>
+                      <span className="finding__why">Early signal: <RefText text={risk.early_signal} /></span>
                     )}
                   </li>
                 ))}
@@ -267,7 +290,9 @@ export default function ReasoningView({ session }: { session: SessionView }) {
 
           <div className="evidence">
             <span className="micro-label">How far to trust this</span>
-            <p className="prose">{recommendation.confidence_note}</p>
+            <p className="prose">
+              <RefText text={recommendation.confidence_note} />
+            </p>
           </div>
         </section>
       )}

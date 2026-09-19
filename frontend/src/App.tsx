@@ -18,6 +18,8 @@ import Sidebar from "./components/Sidebar";
 import Clarification from "./components/Clarification";
 import DecisionOverview from "./components/DecisionOverview";
 import ReasoningView from "./components/ReasoningView";
+import ClampText from "./components/ClampText";
+import RefText, { RefProvider } from "./components/RefText";
 import { AlertIcon, BookIcon } from "./components/icons";
 import "./styles/layout.css";
 
@@ -206,6 +208,7 @@ export default function App() {
               : ""}
       </p>
 
+      <RefProvider session={session}>
       <div className="frame">
         <Sidebar
           brief={brief}
@@ -321,13 +324,19 @@ export default function App() {
           {session && advice && (
             <>
               <section className="intro">
-                <p className="eyebrow">Your decision brief</p>
+                <p className="eyebrow">
+                  Your decision brief · {advice.items.length} initiative
+                  {advice.items.length === 1 ? "" : "s"} considered
+                </p>
                 <h1 className="h1" tabIndex={-1} ref={headingRef}>
                   A focused place to start.
                 </h1>
-                <p className="lede">
-                  {advice.items.length} initiative{advice.items.length === 1 ? "" : "s"} considered
-                  against your objectives and the limits you gave.
+                {/* The advisor's own summary, in full and at body size. On a
+                    narrow screen it folds to a few lines with "Show all". */}
+                <p className="lede lede--summary">
+                  <ClampText lines={3} narrowOnly>
+                    <RefText text={advice.summary} />
+                  </ClampText>
                 </p>
 
                 {outdated && (
@@ -382,6 +391,7 @@ export default function App() {
           {session && !advice && !roundPending && <ReasoningView session={session} />}
         </main>
       </div>
+      </RefProvider>
 
       <footer className="foot">
         <span>

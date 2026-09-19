@@ -1521,3 +1521,108 @@ cannot be told from what is recorded here. The backend now reports 3 active sess
 
 Redesign implemented, verified and documented. The real backend is left running, still holding
 session `2a60d8040351`.
+
+## 2026-09-19 — Prompt [014](prompts/014-visual-refinement.md), refinement against the reference
+
+**Instruction:** Bring the redesign closer to the attached design preview: restore the hierarchy,
+simplify the recommended card, make the sidebar genuinely compact, fix the mobile reading order,
+make identifiers in prose readable, and correct the prepared clarification screenshot. No paid
+model calls.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### Starting point
+
+Commit `99c3010`, clean working tree. The backend was still running and still held session
+`2a60d8040351` (9 provider attempts, 4 accepted records, turn 3). The reference file was opened in
+the browser and captured beside the implementation; a copy is kept outside Git.
+
+### What changed
+
+- **Hierarchy.** The advisor's summary is no longer a 25 px multi-line headline. It is the page
+  description, in full, at 14 px. The recommended initiative's name is the 25 px heading inside the
+  lead card. At 1366 × 768 the name and "See first actions" are both above the fold (the button
+  was at y 791 on a 768 px screen before the last spacing change; it is now at y 714).
+- **Recommended card.** The "Based on" chips are gone from the card face. Every cited source, with
+  its kind, readable label and identifier, is behind **Evidence & sources (n)**. The conditions
+  stay visible under "Holds only if". "See first actions" is the green primary button; "Why this
+  recommendation" is a text link. Multiple recommended initiatives and the no-recommendation case
+  are unchanged; no ranking is inferred.
+- **Secondary cards and open questions** follow the reference: a plain stance label, the name, the
+  rationale, and a disclosure that now also lists the sources each option cites. The skipped and
+  unanswered questions are rows in one ruled list, followed by "Review the other open questions".
+- **Sidebar.** Session controls first, with "Review or edit the full brief" directly under the start
+  control and the editor opening there. Objectives show titles only; their explanations are in the
+  full brief. Constraints are ruled rows with their real kind and full value. A value longer than
+  three lines gets a **Show all** button (keyboard and touch, `aria-expanded`); the earlier
+  tooltip-only clamp is gone. No value is shortened or extracted.
+- **Mobile reading order.** Below 860 px the sidebar keeps only organisation, start, the brief
+  control and **Show context**; the context folds behind that disclosure. The active task follows
+  directly. The summary folds to three lines with "Show all".
+- **Readable references in prose.** See D-046. Implemented in `lookup.ts` (`referenceIndex`,
+  `splitReferences`) and `components/RefText.tsx`, applied to every model-written sentence in the
+  overview, the reasoning view and the clarification form.
+- **Tests.** `frontend/tests/references.test.mjs`, run by `npm test` with Node's built-in runner:
+  7 tests covering exact matching, exact rejoining, unresolved and look-alike tokens, and the
+  question labels.
+- **Rationale** in [ui-ux.md](ui-ux.md) rewritten for the refined interface.
+
+### The corrected clarification screenshot
+
+The previous set's screenshot 03 typed a delivery-volume answer into the budget-confirmation
+question. In the new set, the prepared round places the manager's own recorded answer to the
+historical-data question under that question, and marks the budget question as skipped, as the
+manager did in the live session. **It is a prepared state**: the live session's payload with its
+status fields changed, served to the page by intercepting one `GET`. It shows how the form
+renders. It says nothing about model behaviour. The original session, its trace and the earlier
+screenshot set are untouched.
+
+### Verification
+
+Chromium through Playwright, against the running dev server and the real backend. Screenshots in
+`.local-review/screenshots/ui-redesign-002/`, untracked, with the reference captured as
+`00-reference-desktop.png` and `00-reference-mobile.png`.
+
+| Check | Result |
+|---|---|
+| 1366 × 768: start control; brief control directly beneath | Bottom at 222 px; brief control at 232 px |
+| 1366 × 768: recommended name size and position; summary size | 25 px at y 422; summary 14 px |
+| 1366 × 768: "See first actions" | y 714, within the viewport |
+| "See first actions" by keyboard alone | Reached with Tab, opened with Enter, `aria-expanded` true, 5 actions |
+| Evidence & sources | Every cited source listed with its identifier |
+| Known identifiers still printed raw in prose (overview; reasoning with every section expanded) | None; none |
+| Readable inline references | 5 in the overview, 22 in the reasoning view |
+| Objective explanations in the compact sidebar | Not shown (in the brief editor) |
+| Long constraint | "Show all" reachable by keyboard; `aria-expanded` true; full text shown |
+| Brief editor fields clipped | 0 of 16 |
+| Clarification (prepared), sending (prepared) | 3 questions; "Sending…", disabled |
+| Outdated advice (prepared); session unavailable (live) | Notice shown; notice shown |
+| 1440 × 900 | Frame 1280 px, sidebar 204 px, primary action within the viewport |
+| 390 × 844, initial | Start control at y 112, heading at y 266, context folded, no overflow |
+| 390 × 844, clarification (prepared) | First question at y 393, no overflow |
+| 390 × 844, completed | Recommended name at y 624, no overflow; context disclosure opens |
+| Page errors | None |
+| Frontend type check, production build, frontend tests (7), backend tests (169) | All pass |
+
+**Requests.** Every request the pages sent was a `GET`, except the one prepared-round `POST`, which
+the browser held and then aborted; it never reached the backend. Session `2a60d8040351` read
+9 attempts, 4 records, turn 3 before and after. The backend access log has no new `POST` since
+the previous entry.
+
+### Remaining differences from the reference
+
+1. **Real content is longer.** The reference used short invented values and copy; the application
+   shows the brief's real values and the model's real sentences, so rows and cards are taller.
+2. **The reopened-session notice** sits above the page head, which the reference does not have.
+3. **"Review or edit the full brief"** wraps onto two lines in the 204 px sidebar; the reference's
+   shorter label fits on one.
+4. **"Holds only if"** lists each condition the advisor gave, where the reference shows one
+   summarising line. Writing that line would mean inventing a summary.
+5. **No "Recommended first" label**, for the reason in D-045.
+
+### Status at end of entry
+
+Refinement implemented, verified and documented without a model call. The real backend is left
+running, still holding session `2a60d8040351`.
