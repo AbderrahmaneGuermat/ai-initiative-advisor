@@ -786,6 +786,98 @@ must not trigger.
 
 ---
 
+## D-038 — The action comes before the form
+
+**Status:** Confirmed · 2026-09-19
+
+The context panel leads with the organisation, a one-line count of what the brief contains, and
+the start button. Objectives, constraints and initiatives sit below in labelled, collapsed
+sections that state their own contents.
+
+**Why.** The browser walkthrough showed the start button below every field of a brief the manager
+had not asked to edit. Starting the sample scenario meant scrolling past a form to reach the one
+control that mattered. Editing is the rare case; starting is the common one, and the layout had
+them the wrong way round.
+
+Nothing is removed. Every field is still editable, one click away, and the sections say how many
+entries they hold so a collapsed section is not a mystery.
+
+**Related:** long values are now auto-growing textareas. Objectives, constraint values and
+initiative descriptions were clipped in single-line inputs, so a manager could not read the text
+they were about to send. A check at two viewports confirms sixteen such fields with none clipped.
+
+---
+
+## D-039 — Progress is shown where the manager is looking
+
+**Status:** Confirmed · 2026-09-19
+
+Submitting a round now shows a spinner and a label beside the Send button, the button is disabled
+and relabelled, and a visually hidden live region announces the change. A second press does
+nothing.
+
+**Why.** The busy indicator sat at the top of the thread. Submitting from the bottom of a question
+list meant no visible feedback at all, so the only signal was a greyed-out button. On a laptop
+screen that is indistinguishable from nothing happening, which invites a second press.
+
+**What the status says, and does not.** It says a step is running and that it can take up to a
+minute. There is no percentage and no intermediate stage, because the application does not know
+either. Inventing them would be a progress bar that lies.
+
+**Focus.** A new round of questions takes focus, and an arriving recommendation moves focus to the
+advice heading. A jump control is also offered, since focus movement alone is easy to miss.
+
+---
+
+## D-040 — Scannable advice, foldable workings, visible uncertainty
+
+**Status:** Confirmed · 2026-09-19
+
+The advice panel shows the summary, every initiative's stance with its reasoning, and what is
+still unknown. Assumptions, risks, the confidence note, diagnosis findings and comparison evidence
+are in labelled expandable sections.
+
+**The rule that governs what folds.** Uncertainty never folds. Workings do. Hiding what is not
+known would turn a product built to surface gaps into one that conceals them, so both "Still
+unknown" and the advisor's own open unknowns stay open while assumptions and evidence fold away.
+
+**Nothing is truncated.** No text is cut with an ellipsis and no source is dropped. A collapsed
+section states its count, and opening it shows the whole thing.
+
+**Layout.** A fixed context sidebar and one wide column holding the advice above the working
+detail. Three fully expanded columns gave the recommendation roughly a third of a laptop screen,
+which is not enough width to read a paragraph, and padded the short panels out beside the long one.
+Measured after the change: the advice panel renders at 900px at both 1440 and 1366 wide, against
+roughly 330px before.
+
+**Header.** Version and build stage are gone from the manager-facing header. They told a manager
+nothing and occupied the most prominent corner of the page. Both remain at `/api/diagnostics`.
+Configuration problems and operational errors stay visible, because those are the failures a
+manager can act on.
+
+---
+
+## D-041 — Show the manager what they actually submitted
+
+**Status:** Confirmed · 2026-09-19
+
+After a round closes, each answered question displays the text the manager sent, beside its status.
+The API returns it as `answer`, null for anything not answered.
+
+**Why it matters more than it looks.** In the browser walkthrough a staffing-capacity question was
+answered with document-volume information. The advisor then used the volume, and the staffing gap
+stayed open. With only a status tag visible, the session looked like the question had been dealt
+with. With the text visible, the mismatch is obvious to the person best placed to notice it.
+
+**Status is not verification.** The interface says so directly: answered means a reply was
+submitted, not that the reply addressed the question, was checked, or closed the gap. The same
+caveat is in the API field's own documentation, so a future consumer reads it too.
+
+That walkthrough is recorded as it happened. The volume was supplied; staffing capacity remained
+unknown. No staffing answer has been invented and no historical result altered.
+
+---
+
 ## Decisions still open
 
 D-014 provider, plus session persistence, export formats, test depth and streaming. Tabulated with

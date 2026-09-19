@@ -104,6 +104,13 @@ export interface Question {
    * not a request for input.
    */
   awaiting_response: boolean;
+  /**
+   * What the manager actually wrote. Null unless they answered.
+   *
+   * A non-null value means a reply was submitted. It does not mean the reply
+   * addressed the question, nor that the gap the question was about is closed.
+   */
+  answer: string | null;
 }
 
 export interface HistoryEntry {

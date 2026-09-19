@@ -180,6 +180,9 @@ def _question_view(session) -> list[dict[str, Any]]:
         pending = session.round_is_pending(index)
         for question in round_.batch.questions:
             status = statuses.get(question.id, AnswerStatus.UNANSWERED)
+            answer = next(
+                (r.answer for r in round_.responses if r.question_id == question.id), None
+            )
             out.append(
                 {
                     "id": question.id,
@@ -188,6 +191,16 @@ def _question_view(session) -> list[dict[str, Any]]:
                     "status": status.value,
                     "round": index,
                     "awaiting_response": pending,
+                    # What the manager actually wrote, so they can see it after the
+                    # round closes. Null unless they answered: a skipped or
+                    # unanswered question has no text, and inventing one would be
+                    # putting words in their mouth.
+                    #
+                    # Note what "answered" does and does not mean. It means a reply
+                    # was submitted. It does not mean the reply addressed the
+                    # question, that its content was checked, or that the gap the
+                    # question was asked about is now closed.
+                    "answer": answer,
                 }
             )
     return out

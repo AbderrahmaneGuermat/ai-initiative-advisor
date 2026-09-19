@@ -440,3 +440,28 @@ def test_the_api_does_not_serve_an_outdated_recommendation_as_current(monkeypatc
             assert actions.count("recommend") == 1
 
     asyncio.run(scenario())
+
+
+def test_the_view_returns_the_submitted_answer_text(session):
+    """The manager can see what they actually wrote after the round closes.
+
+    Only for an answered question. A skipped or unanswered one has no text, and
+    supplying one would be putting words in the manager's mouth.
+    """
+    from app.api.routes import _question_view
+
+    client = doubles.ScriptedClient(
+        [doubles.next_action("ask_clarification"), doubles.clarification()]
+    )
+    run(AdvisoryEngine(client).run_turn(session))
+    session.record_answers({"Q-VOLUME": "About 400 a week."}, skipped={"Q-DATA"})
+
+    view = {q["id"]: q for q in _question_view(session)}
+
+    assert view["Q-VOLUME"]["answer"] == "About 400 a week."
+    assert view["Q-DATA"]["answer"] is None
+    assert view["Q-TEAM"]["answer"] is None
+
+    # Status and content remain separate concerns.
+    assert view["Q-VOLUME"]["status"] == "answered"
+    assert view["Q-DATA"]["status"] == "skipped"

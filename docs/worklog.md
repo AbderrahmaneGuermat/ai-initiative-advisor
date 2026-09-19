@@ -938,3 +938,94 @@ All deterministic. **No live run in this iteration, as instructed.**
 
 The three state-consistency defects are fixed, each covered by deterministic tests. Committed and
 pushed. Stopping for visual review.
+
+---
+
+## 2026-09-19 — Prompt [009](prompts/009-interface-improvements.md), interface improvements
+
+**Instruction:** Act on what the browser walkthrough showed. No new features, no paid live run.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+### What the walkthrough had shown
+
+The first real browser session surfaced four presentation problems. The advice itself was sound;
+the page around it was not.
+
+1. The start button sat below the entire context form.
+2. The busy indicator was at the top of the thread, invisible when submitting from the bottom.
+3. Three fully expanded columns left the recommendation about a third of a laptop screen wide.
+4. Only a status tag was shown for each answered question, never the text submitted.
+
+### What was done
+
+**The action before the form.** The context panel leads with the organisation, a count of what the
+brief holds, and the start button. Everything else is in collapsed labelled sections. Long values
+became auto-growing textareas. Recorded as D-038.
+
+**Progress beside the control.** A spinner and label sit next to Send, the button is disabled and
+relabelled while working, a live region announces the change, and a second press is ignored. The
+status says only what the application knows: that a step is running and that it can take up to a
+minute. Recorded as D-039.
+
+**Hierarchy.** Summary, stances and unknowns stay visible. Assumptions, risks, the confidence note,
+diagnosis findings and comparison evidence fold into labelled sections. Uncertainty never folds;
+workings do. Nothing is truncated. The layout is now a sidebar plus one wide column with the advice
+above the thread, and version and stage moved out of the header to diagnostics. Recorded as D-040.
+
+**The submitted answer is shown back.** The API returns `answer` per question, null unless
+answered, and the interface displays it under the question with a caveat that answered means
+replied, not verified. Recorded as D-041.
+
+### Checks performed
+
+Backend and build checks are ordinary test runs. **The visual checks are replay-based**: a small
+server in the scratchpad served the session payloads recorded during the real OpenAI run of
+2026-09-18, so the interface could be driven end to end at two viewports. **No model request was
+made in this iteration and nothing was spent.** These screenshots show presentation only. They are
+not evidence about the advisor's behaviour, which only a live run provides.
+
+| Check | Result |
+|---|---|
+| `pytest backend` | **169 passed**, 0 failed (was 168) |
+| New test: the view returns the submitted answer text, null when skipped or unanswered | Passes |
+| Frontend `tsc --noEmit` and `npm run build` | Both pass |
+| Start button visible without scrolling, 1440 × 900 and 1366 × 768 | Yes at both, at y = 332 |
+| Header content | "Ready · Credentials are checked on the first request." No version or stage |
+| Auto-growing fields clipped | 16 fields, **0 clipped**, at both viewports |
+| Submit row visible in the viewport while working | Yes at both |
+| Button label and state while working | "Sending…", disabled; a second press was attempted and ignored |
+| Focus after a recommendation arrives | Lands on `advice-heading` at both viewports |
+| Advice panel width | **900px** at both, against roughly 330px before |
+| Settled questions and submitted answer shown | 3 settled, 1 answer displayed with its text |
+| Expandable comparison evidence opens with full content | Yes |
+| Page errors, console warnings | None |
+
+One defect was found by looking at the first pass of screenshots and fixed before the second: in
+the narrow sidebar the section hint overflowed its summary and was clipped. Summaries now wrap.
+
+### Honest note on the walkthrough being displayed
+
+The recorded session answered a staffing-capacity question with document-volume information. That
+is now visible in the interface rather than hidden behind a status tag. The volume was supplied;
+staffing capacity remained unknown, and the advice still lists it as an open unknown. No staffing
+answer was invented and no historical result was altered.
+
+### What remains unverified
+
+1. **No live run this iteration.** The interface changes have not been exercised against real
+   model timing. In particular the "up to a minute" wording is drawn from the earlier measured
+   runs, not from anything observed today.
+2. **Nobody has used the page by hand.** These checks were driven by Playwright. Keyboard
+   navigation, screen reader output and pointer interaction beyond clicking are unverified.
+3. **Only two viewports.** 1440 × 900 and 1366 × 768. Narrower breakpoints exist in the stylesheet
+   but were not inspected.
+4. **One remaining console observation**, unchanged from the first walkthrough: a
+   `GET /api/health :: net::ERR_ABORTED` in development, caused by React's double effect in strict
+   mode aborting the first fetch. Harmless and development-only, but it appears in the network
+   panel.
+
+### Status at end of entry
+
+Interface reworked, verified by replay at two viewports, committed and pushed. Screenshots are
+local only and untracked. Stopping for review.

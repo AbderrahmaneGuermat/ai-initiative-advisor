@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiError,
@@ -37,6 +37,9 @@ export default function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AdvisoryError | null>(null);
 
+  const adviceRef = useRef<HTMLElement>(null);
+  const hadRecommendation = useRef(false);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -58,6 +61,23 @@ export default function App() {
 
     return () => controller.abort();
   }, []);
+
+  const goToAdvice = useCallback(() => {
+    const node = adviceRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "start" });
+    node.querySelector<HTMLElement>("#advice-heading")?.focus();
+  }, []);
+
+  // When a recommendation appears, move focus to it. The manager's attention is
+  // wherever they last acted, which is rarely where the answer landed.
+  useEffect(() => {
+    const has = Boolean(session?.recommendation);
+    if (has && !hadRecommendation.current && busy === null) {
+      goToAdvice();
+    }
+    hadRecommendation.current = has;
+  }, [session?.recommendation, busy, goToAdvice]);
 
   const guard = useCallback(async (label: string, work: () => Promise<SessionView>) => {
     setBusy(label);
@@ -120,21 +140,29 @@ export default function App() {
       {error && <ErrorNotice error={error} onDismiss={() => setError(null)} />}
 
       <main className="app__main">
-        <ContextPanel
-          brief={brief}
-          onChange={onBriefChange}
-          onStart={onStart}
-          busy={busy !== null}
-          sessionActive={session !== null}
-          briefEdited={briefEdited}
-        />
-        <AdvisoryThread
-          session={session}
-          busy={busy}
-          onSubmitAnswers={onAnswers}
-          onContinue={onContinue}
-        />
-        <AdvicePanel session={session} />
+        <div className="app__side">
+          <ContextPanel
+            brief={brief}
+            onChange={onBriefChange}
+            onStart={onStart}
+            busy={busy !== null}
+            sessionActive={session !== null}
+            briefEdited={briefEdited}
+          />
+        </div>
+
+        {/* Advice first, then the working detail. On a laptop the two stack in
+            one wide column rather than being squeezed into narrow ones. */}
+        <div className="app__main-column">
+          <AdvicePanel session={session} ref={adviceRef} />
+          <AdvisoryThread
+            session={session}
+            busy={busy}
+            onSubmitAnswers={onAnswers}
+            onContinue={onContinue}
+            onGoToAdvice={goToAdvice}
+          />
+        </div>
       </main>
 
       <footer className="app__footer">
