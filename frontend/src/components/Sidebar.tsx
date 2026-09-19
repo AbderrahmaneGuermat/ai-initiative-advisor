@@ -1,16 +1,15 @@
 import { useId, useState } from "react";
 
 import type { Brief, Constraint } from "../api/client";
-import AutoTextarea from "./AutoTextarea";
 import ClampText from "./ClampText";
-import { ChevronIcon, EditIcon, TargetIcon } from "./icons";
+import { ChevronIcon, TargetIcon } from "./icons";
 
 /**
  * The context sidebar: who is being advised, and under what limits.
  *
  * The session controls come first: start, and the full brief behind one
- * clearly labelled control directly beneath it. The editor opens there, next to
- * the button it affects, rather than below everything else.
+ * clearly labelled control directly beneath it. The editor itself opens in the
+ * main column, where long text has room; this column stays a summary.
  *
  * The compact view summarises. Objectives show their titles; why each matters
  * is in the full brief. Constraints show their real kind and their full value.
@@ -28,25 +27,29 @@ function kindLabel(kind: string): string {
 
 export default function Sidebar({
   brief,
-  onChange,
   onStart,
+  onEdit,
+  editing,
+  editorId,
   busy,
   sessionActive,
   briefEdited,
   emptyNote,
 }: {
   brief: Brief | null;
-  onChange: (brief: Brief) => void;
   onStart: () => void;
+  /** Open or close the brief editor in the main column. */
+  onEdit: () => void;
+  editing: boolean;
+  editorId: string;
   busy: boolean;
   sessionActive: boolean;
+  /** True when the brief on screen is not the one the session was run on. */
   briefEdited: boolean;
   /** What to say while there is no brief: loading, or nothing to load. */
   emptyNote: string;
 }) {
-  const [editing, setEditing] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
-  const editorId = useId();
   const contextId = useId();
 
   if (!brief) {
@@ -57,13 +60,7 @@ export default function Sidebar({
     );
   }
 
-  const update = (patch: Partial<Brief>) => onChange({ ...brief, ...patch });
-
-  const startLabel = sessionActive
-    ? briefEdited
-      ? "Start a new session"
-      : "Start again"
-    : "Start advisory session";
+  const startLabel = sessionActive ? "Start again" : "Start advisory session";
 
   return (
     <aside className="sidebar" aria-label="Context">
@@ -71,27 +68,31 @@ export default function Sidebar({
         <h2 className="side-label">Your organisation</h2>
         <p className="side-org">{brief.organisation}</p>
 
-        {briefEdited && sessionActive && (
-          <p className="side-note side-note--warn">
-            The brief has changed. Starting again creates a new session. The current advice is not
-            revised.
-          </p>
+        {/* Once a session exists, starting again is available but secondary:
+            the advice and its first actions are what the page is for. When
+            the brief has changed, the main column owns the one "start"
+            action, so it is not repeated here. */}
+        {!(sessionActive && briefEdited) && (
+          <button
+            className={
+              sessionActive ? "button button--block" : "button button--primary button--block"
+            }
+            onClick={onStart}
+            disabled={busy || editing}
+          >
+            {busy ? "Working…" : startLabel}
+          </button>
         )}
-
-        <button className="button button--primary button--block" onClick={onStart} disabled={busy}>
-          {busy ? "Working…" : startLabel}
-        </button>
 
         <div className="side-controls">
           <button
             type="button"
             className="side-link"
             aria-expanded={editing}
-            aria-controls={editorId}
-            onClick={() => setEditing((v) => !v)}
+            aria-controls={editing ? editorId : undefined}
+            onClick={onEdit}
           >
-            <EditIcon size={13} />
-            {editing ? "Hide the full brief" : "Review or edit the full brief"}
+            {editing ? "Close the brief editor" : "Review or edit the full brief"}
           </button>
 
           <button
@@ -106,103 +107,6 @@ export default function Sidebar({
           </button>
         </div>
       </section>
-
-      {editing && (
-        <div className="editor" id={editorId}>
-          <label className="field">
-            <span className="field__label">Organisation</span>
-            <AutoTextarea
-              value={brief.organisation}
-              onChange={(value) => update({ organisation: value })}
-            />
-          </label>
-
-          <label className="field">
-            <span className="field__label">Situation</span>
-            <AutoTextarea
-              value={brief.situation ?? ""}
-              minRows={3}
-              placeholder="Not stated"
-              onChange={(value) => update({ situation: value || null })}
-            />
-          </label>
-
-          <h3 className="editor__heading">Objectives</h3>
-          {brief.objectives.map((objective, index) => (
-            <div className="editor__group" key={objective.id}>
-              <label className="field">
-                <span className="field__label">Objective {index + 1}</span>
-                <AutoTextarea
-                  value={objective.statement}
-                  onChange={(value) => {
-                    const objectives = [...brief.objectives];
-                    objectives[index] = { ...objective, statement: value };
-                    update({ objectives });
-                  }}
-                />
-              </label>
-              <label className="field">
-                <span className="field__label field__label--sub">Why it matters</span>
-                <AutoTextarea
-                  value={objective.rationale ?? ""}
-                  placeholder="Not stated"
-                  onChange={(value) => {
-                    const objectives = [...brief.objectives];
-                    objectives[index] = { ...objective, rationale: value || null };
-                    update({ objectives });
-                  }}
-                />
-              </label>
-            </div>
-          ))}
-
-          <h3 className="editor__heading">Constraints</h3>
-          {brief.constraints.map((constraint, index) => (
-            <label className="field" key={constraint.id}>
-              <span className="field__label">{constraint.kind}</span>
-              <AutoTextarea
-                value={constraint.value ?? ""}
-                placeholder="Not stated"
-                onChange={(value) => {
-                  const constraints = [...brief.constraints];
-                  constraints[index] = { ...constraint, value: value || null };
-                  update({ constraints });
-                }}
-              />
-            </label>
-          ))}
-
-          <h3 className="editor__heading">Candidate initiatives</h3>
-          {brief.initiatives.map((initiative, index) => (
-            <div className="editor__group" key={initiative.id}>
-              <label className="field">
-                <span className="field__label">{initiative.id}</span>
-                <AutoTextarea
-                  value={initiative.name}
-                  onChange={(value) => {
-                    const initiatives = [...brief.initiatives];
-                    initiatives[index] = { ...initiative, name: value };
-                    update({ initiatives });
-                  }}
-                />
-              </label>
-              <label className="field">
-                <span className="field__label field__label--sub">What it involves</span>
-                <AutoTextarea
-                  value={initiative.description ?? ""}
-                  minRows={2}
-                  placeholder="Not described"
-                  onChange={(value) => {
-                    const initiatives = [...brief.initiatives];
-                    initiatives[index] = { ...initiative, description: value || null };
-                    update({ initiatives });
-                  }}
-                />
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className={contextOpen ? "side-context is-open" : "side-context"} id={contextId}>
         <section className="side-block">

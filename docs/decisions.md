@@ -1011,3 +1011,24 @@ merely contains a known one is not split.
 read badly in the model's sentences: "relates to unanswered an unanswered question". The question's
 opening words say which question is meant; its full text is in the tooltip and listed in full on
 the same page.
+
+## D-047 — The brief is edited as a draft, and changed input withdraws the advice
+
+**Status:** Confirmed · 2026-09-19
+
+The brief editor moved from the 204 px sidebar to the main column, and it now works on a copy.
+Before this, every keystroke changed the brief directly, and the advice for the old brief stayed on
+screen, looking current, beside a small warning.
+
+**Cancel discards; apply compares.** An unchanged draft changes nothing. A changed one replaces the
+brief. Whether the advice still applies is computed by comparing the brief on screen with the
+brief the session was run on, so it cannot drift out of step with a flag, and undoing an edit by
+hand restores the advice as current.
+
+**Changed input withdraws the advice from view.** The advice, questions and comparison are hidden
+and replaced by "Your brief has changed.", with one primary action to start a new advisory session
+and a way to discard the changes. They are hidden rather than removed, so discarding brings them
+back, with any half-written answers intact. The previous session keeps its URL.
+
+**No new capability.** No persistence, no revision history, no backend change. Starting a session
+is still a separate click, and nothing in the editor calls the backend.

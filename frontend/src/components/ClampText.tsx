@@ -31,9 +31,15 @@ export default function ClampText({
 
   useLayoutEffect(measure, [children, open]);
 
+  // Measure again whenever the box changes size, including when a hidden
+  // ancestor is shown: text measured while hidden looks uncut, and the
+  // "Show all" control would never appear.
   useEffect(() => {
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(node);
+    return () => observer.disconnect();
   });
 
   const classes = open ? "" : narrowOnly ? "clamp clamp--narrow" : "clamp";

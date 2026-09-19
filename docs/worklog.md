@@ -1626,3 +1626,110 @@ the previous entry.
 
 Refinement implemented, verified and documented without a model call. The real backend is left
 running, still holding session `2a60d8040351`.
+
+## 2026-09-19 — Prompt [015](prompts/015-final-refinement.md), final refinement and verification
+
+**Instruction:** Move the brief editor into the main column as a draft with apply and cancel,
+make the restored-session notice discreet, correct concrete usability problems, and verify
+everything in a browser without model calls.
+
+**Performed by:** Claude, via Claude Code, under the project owner's direction.
+
+---
+
+### Starting point
+
+Commit `46c4469`, clean tree. Backend running, session `2a60d8040351` at 9 provider attempts,
+4 accepted records, turn 3; 6 `POST` lines in the backend access log.
+
+**What the editing behaviour was before this.** The editor lived in the sidebar and changed the
+brief on every keystroke. There was no draft and no cancel. After a change, the sidebar said
+starting again would create a new session, but the old advice stayed in the main column looking
+current. That broke a guarantee this prompt names, so it was corrected rather than preserved.
+
+### What changed
+
+- **Editor in the main column** (`components/BriefEditor.tsx`): "Edit your brief", a 760 px
+  measure, sections for organisation and situation, objectives, constraints and initiatives,
+  full-width growing fields, identifiers shown, and a bar with **Cancel and return** and **Apply
+  changes** that stays in view. All 16 fields are preserved. The sidebar no longer holds fields.
+- **Draft semantics** (`brief.ts`, D-047): see [ui-ux.md](ui-ux.md) section 7. 8 new tests in
+  `frontend/tests/brief.test.mjs`.
+- **Changed brief**: "Your brief has changed." with one **Start a new advisory session** action,
+  "Discard the changes and return to the previous advice", and a link to the previous session.
+  The sidebar start button is not repeated in this state.
+- **Restored status**: a one-line "Session restored" with a "What this means" disclosure holding
+  the explanation and the identifier. Unavailable-session, outdated-advice and provider errors are
+  unchanged and still prominent.
+- **Start again is secondary** once a session exists; "See first actions" is the one primary
+  action beside the advice.
+
+### Defects found and fixed in the pass
+
+1. **"Show all" missing on mobile.** A long value measured while the mobile context was folded
+   looked uncut, so its "Show all" never appeared (visible in the previous set's screenshot 18).
+   `ClampText` now re-measures with a `ResizeObserver` when it becomes visible.
+2. **Editor narrower than the screen on mobile.** The main column kept desktop padding; it now
+   uses 16 px gutters, and the editor fills the column.
+3. **"Review or edit the full brief" wrapped** with "brief" alone on a second line. It needed
+   168 px of a 163 px column; the decorative pencil icon was removed and it fits on one line.
+4. **Two start buttons** in the changed-brief state, one in the sidebar and one in the main column,
+   almost adjacent on mobile. Only the main-column action remains in that state.
+
+### Verification
+
+Chromium through Playwright, against the running dev server and the real backend, at 1366 × 768,
+1440 × 900 and 390 × 844. Every page carried a guard that recorded and aborted any non-`GET`
+`/api` request in the browser. **68 checks, 68 passed.** Highlights:
+
+| Check | Result |
+|---|---|
+| Editor from the initial screen, opened by keyboard | Opens in the main column; focus on "Edit your brief"; 16 fields; none clipped |
+| Editor from a restored completed session | Opens; explains a change needs a new session; start disabled while editing |
+| Long field edited, then cancelled | Brief, sidebar, summary and recommendation unchanged; focus back on the opening control |
+| Unchanged draft applied | Recommendation still current; restored status still shown |
+| Changed draft applied | Advice withdrawn from view; "Your brief has changed." focused; exactly one start action; URL and previous-session link still name `2a60d8040351` |
+| Discard the changes | Advice current again; sidebar restored |
+| Reasoning → editor → back | Returns to the reasoning view |
+| Pending round (prepared): typed answer, then editor cancel, unchanged apply, changed apply, discard | Answer preserved through all four |
+| Start pressed on a changed brief | `POST /api/sessions` stopped in the browser; the failure is reported on screen |
+| Restored status | One line; identifier only inside "What this means" |
+| Outdated (prepared) and unavailable (live) | Distinct and prominent; unavailable recovery loads the sample brief and starts nothing |
+| Keyboard | Tab order header → sidebar → main; visible focus outline |
+| 390 × 844 | No overflow in any state checked; restored status one line (40 px, the height of its touch target; 20 px on desktop); recommendation name in the first screen; editor fills the column; Cancel and Apply 40 px or taller and in view; "Show all" present after "Show context" |
+| Page errors | None |
+| Type check, production build, frontend tests (15), backend tests (169) | All pass |
+
+**Model calls: none.** The only non-`GET` request, the deliberate start press above, was aborted
+in the browser. Session `2a60d8040351` read 9 attempts, 4 records, turn 3 before and after, and
+the backend access log still holds 6 `POST` lines.
+
+### Screenshots
+
+`.local-review/screenshots/ui-final/`, untracked. Earlier sets are untouched.
+
+| File | Source |
+|---|---|
+| `00-desktop-editor-initial.png` | LIVE brief, with a test edit typed locally and not applied |
+| `01-desktop-editor-long-field.png` | LIVE restored session, long staffing field with a local, unapplied edit |
+| `02-desktop-restored-recommendation.png` | LIVE restored session |
+| `03-desktop-changed-brief-before-new-session.png` | LIVE restored session with a local applied edit; no session started |
+| `04-pending-draft-preserved.png` | PREPARED pending round |
+| `05-outdated-advice.png` | PREPARED outdated advice |
+| `06-wide-restored-recommendation.png`, `07-wide-editor.png` | LIVE |
+| `08-mobile-initial.png`, `09-mobile-restored-recommendation.png`, `10-mobile-editor.png` | LIVE |
+| `11-mobile-changed-brief.png` | LIVE with a local applied edit; no session started |
+
+PREPARED states are the live session payload with status fields changed, served by intercepting one
+`GET`. They show rendering only, not model behaviour.
+
+### Remaining limitations
+
+1. Sessions are in memory only; the previous-session link works while the backend runs.
+2. Replacing the URL on a new session means the browser Back button does not return to the
+   previous session; its link is shown before the new session starts.
+3. Checked in Chromium only; no screen-reader test.
+
+### Status at end of entry
+
+Complete. The real backend is left running, still holding session `2a60d8040351`.

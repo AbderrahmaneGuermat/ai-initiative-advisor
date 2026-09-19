@@ -157,15 +157,6 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
-export function EditIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M4 20h4L19 9a2.4 2.4 0 0 0-3.4-3.4L4.5 16.7z" />
-      <path d="m14.5 6.5 3.4 3.4" />
-    </Svg>
-  );
-}
-
 export function BookIcon(props: IconProps) {
   return (
     <Svg {...props}>

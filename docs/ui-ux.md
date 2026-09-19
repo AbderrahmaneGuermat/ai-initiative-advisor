@@ -1,8 +1,8 @@
 # Interface and interaction design
 
 This document explains the interface decisions for assessment part 3. It describes the interface
-as built after prompts [013](prompts/013-visual-redesign.md) and
-[014](prompts/014-visual-refinement.md). The visual reference was a static design preview with
+as built after prompts [013](prompts/013-visual-redesign.md),
+[014](prompts/014-visual-refinement.md) and [015](prompts/015-final-refinement.md). The visual reference was a static design preview with
 fictional content; the application renders real session data in its proportions. Earlier
 iterations and the reasons they changed are in the [worklog](worklog.md).
 
@@ -17,13 +17,14 @@ that sounds more certain than it is. Every decision below follows from that.
 Two columns inside a frame capped at 1280 px.
 
 - **Sidebar, 204 px.** Session controls first: the organisation, the start control, and "Review or
-  edit the full brief" directly beneath it. The editor opens there, next to the button it affects.
-  Below that, a summary of the context: objective titles, the constraints as ruled rows (their
+  edit the full brief" directly beneath it. The sidebar stays a summary; the editor opens in the
+  main column (section 7). Below the controls, a summary of the context: objective titles, the constraints as ruled rows (their
   real kind as the label, their full value beneath), and the options on the table. Why each
   objective matters lives in the full brief, not in the summary.
 - **Main column.** Whatever the session needs attention on now. Before a session it explains what
   will happen and that nothing runs until the manager starts it. While a clarification round is
-  open, the questions come first. Once advice exists, the decision brief takes the column.
+  open, the questions come first. Once advice exists, the decision brief takes the column. While the
+  brief is being edited, the editor takes it.
 
 The header carries the product name, the organisation and one honest status chip (Checking…,
 Ready, Not configured, Not connected). Diagnostics sit behind that chip: they matter to whoever runs
@@ -49,6 +50,11 @@ recommendation.
 
 At 1366 × 768 the recommended initiative's name and its primary action are both visible without
 scrolling.
+
+**Starting again is secondary once there is advice.** Before a session, the start control is the
+green primary button. Once a session exists it becomes a plain button, so "See first actions" is
+the only primary action beside the recommendation. It stays at the top of the sidebar, so starting
+again is always easy to find.
 
 **No ranking is invented.** The recommendation is a list, and array order is not a priority. A
 "Recommended first" label would claim an ordering the advisor never stated, so it does not appear.
@@ -112,22 +118,56 @@ beneath it. The button appears only when the text is actually cut, works by keyb
 announces its state. The full value is also in the brief editor. A tooltip is never the only way
 to read it.
 
-## 7. States
+## 7. Editing the brief
+
+The editor opens in the main column at a 760 px measure, under the heading **Edit your brief**. It
+has sections for the organisation and situation, the objectives, the constraints and the candidate
+initiatives. Every field is a full-width text area that grows with its content, and each objective,
+constraint and initiative shows its identifier. **Cancel and return** and **Apply changes** sit in a
+bar that stays in view while a long brief scrolls.
+
+**It is a draft.** The editor copies the brief when it opens and changes only the copy.
+
+- **Cancel** discards the copy. The brief, the session and the advice are exactly as they were.
+- **Apply, unchanged**, changes nothing. The advice stays current.
+- **Apply, changed**, replaces the brief on screen. The advice, questions and comparison were
+  produced for the brief as it was, so they are withdrawn from view, and the column says **Your
+  brief has changed.** with one primary action, **Start a new advisory session**. Pressing it is a
+  separate choice; nothing starts on apply. The same panel offers to discard the changes and return
+  to the previous advice, and links to the previous session, which keeps its own URL while the
+  advisor runs.
+
+Whether the advice applies is decided by comparing the brief on screen with the brief the session
+was run on, not by a flag. An edit undone by hand counts as no change. The rules are tested in
+`frontend/tests/brief.test.mjs`.
+
+The questions and advice stay mounted while the editor is open, only hidden, so a half-written
+answer to a pending question is still there on return. The start control is disabled while the
+editor is open, so a session cannot be started from a brief whose draft has not been applied.
+
+**Focus.** Opening the editor moves focus to its heading. Cancelling or applying an unchanged
+draft returns focus to the control that opened it. Applying a change moves focus to "Your brief has
+changed." The sidebar control reads **Close the brief editor** while it is open.
+
+Nothing in the editor calls the backend. There is no persistence and no revision history.
+
+## 8. States
 
 | State | What the manager sees |
 |---|---|
 | Initial | The context in the sidebar, the start control, and a statement that nothing runs yet |
-| Editing | The full brief as auto-growing fields, opened under the start control; if a session exists and the brief changes, a note that starting again creates a new session |
+| Editing | The full brief in the main column as a draft, with Cancel and Apply (section 7) |
+| Brief changed after a session | "Your brief has changed." with one start action, a way back to the previous advice, and the previous session's link. The previous advice is not shown |
 | Starting, sending, continuing | The pressed control disabled with its label changed, a spinner beside it, and "The advisor is working. This may take a few minutes." Duplicate submissions are blocked |
 | Questions pending | The round first in the main column, each question with why it matters, a free-text answer and "Skip this question" |
 | Paused without advice | "In progress", a Continue control, and the reasoning so far |
 | Completed | The decision brief, as above |
 | Outdated | The previous advice under an amber notice, and Continue |
 | Error or timeout | A notice saying whether the step can be retried, with technical detail folded away and a Dismiss control |
-| Reopened by URL | A compact notice that the session was reopened as the advisor left it and nothing was regenerated |
+| Reopened by URL | A one-line **Session restored** status. "What this means" explains that existing results were loaded, nothing was regenerated, and sessions are lost if the advisor restarts, and shows the identifier. It never overrides an outdated-advice warning |
 | Session unavailable | A notice that sessions are held in memory and lost on restart, and one control to load the sample brief. Nothing starts |
 
-## 8. Visual system
+## 9. Visual system
 
 Colour, type and geometry are tokens in `frontend/src/styles/tokens.css`.
 
@@ -142,7 +182,7 @@ Colour, type and geometry are tokens in `frontend/src/styles/tokens.css`.
   padding, 12 px gaps; controls 7 px radius. Main column padding 28 px.
 - **Icons** are inline outline SVGs, hidden from assistive technology.
 
-## 9. Responsive behaviour
+## 10. Responsive behaviour
 
 - **1366 × 768** is the design target. The start control, the recommended initiative's name and
   "See first actions" are above the fold.
@@ -152,20 +192,23 @@ Colour, type and geometry are tokens in `frontend/src/styles/tokens.css`.
   start, "Review or edit the full brief" and **Show context**. The context folds behind that
   disclosure, so the active task follows immediately: the introduction before a session, the
   questions during a round, the decision once advice exists. The summary folds to three lines
-  with "Show all". Cards become single-column and controls grow to 40 px touch targets. Verified
-  with no horizontal overflow in the initial, clarification and completed states.
+  with "Show all". Cards become single-column and controls grow to 40 px touch targets. The editor
+  uses the full column width with 16 px gutters, and its Cancel and Apply buttons split the bar
+  between them. Verified with no horizontal overflow in the initial, clarification, completed,
+  editing and changed-brief states.
 
-## 10. Accessibility
+## 11. Accessibility
 
 - Focus is always visible on controls. Headings that receive focus from code, so a screen reader
   lands on new content, show no ring because they are not controls.
 - Every disclosure is a button or `<details>` with its state exposed (`aria-expanded`), including
-  "See first actions", "Evidence & sources", "Show all" and "Show context". The primary action was
-  verified reachable and operable by keyboard alone.
+  "See first actions", "Evidence & sources", "Show all", "Show context", "What this means" and the
+  brief editor toggle. The primary action and the editor were verified by keyboard alone.
+- Tab order follows the page: header, sidebar controls, then the main column.
 - A polite live region announces when work starts, when questions arrive and when advice is ready.
 - Status is never carried by colour alone.
 
-## 11. Known limits
+## 12. Known limits
 
 - **No persistence.** A reopened URL works only while the backend process holds the session.
 - **No export** of the decision brief.

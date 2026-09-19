@@ -36,6 +36,7 @@ two are never mixed.
 | 012 | [012-session-recovery.md](012-session-recovery.md) | Reopen an existing backend session from a URL, and capture the completed example without new model requests |
 | 013 | [013-visual-redesign.md](013-visual-redesign.md) | Implement the approved visual redesign with exact tokens, cover every state, verify at three viewports, and document the interface rationale |
 | 014 | [014-visual-refinement.md](014-visual-refinement.md) | Refine the redesign against the attached reference: hierarchy, a simpler recommended card, a compact sidebar, mobile reading order, readable references in prose, and a corrected prepared screenshot |
+| 015 | [015-final-refinement.md](015-final-refinement.md) | Move the brief editor into the main column as a draft, make the restored-session notice discreet, and complete a final usability and verification pass |
 
 ## Attribution
 

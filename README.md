@@ -223,8 +223,8 @@ backend\.venv\Scripts\python.exe -m pytest backend      # Windows
 backend/.venv/bin/python -m pytest backend                # macOS, Linux
 ```
 
-The frontend has a small test of how identifiers in the advisor's prose are rendered, using
-Node's built-in runner (Node 22.6 or later):
+The frontend has small tests for how identifiers in the advisor's prose are rendered and for
+editing the brief as a draft, using Node's built-in runner (Node 22.6 or later):
 
 ```bash
 npm --prefix frontend test
@@ -232,8 +232,10 @@ npm --prefix frontend test
 
 ### Using it
 
-1. Open <http://localhost:5173>. The fictional brief loads on the left.
-2. Edit anything you want to change. Every field is labelled.
+1. Open <http://localhost:5173>. The fictional brief is summarised on the left.
+2. To change it, choose **Review or edit the full brief**. The editor opens in the main column and
+   works on a draft: **Cancel and return** discards it, **Apply changes** keeps it. Nothing is
+   sent to the advisor by editing.
 3. Start the advisory session. The advisor reads the brief and decides what to do first.
 4. Answer the questions it asks, or tick **Skip** on any you do not want to answer. Anything left
    blank stays an open unknown and is carried into the advice rather than guessed at.
